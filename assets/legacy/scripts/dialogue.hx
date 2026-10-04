@@ -329,7 +329,7 @@ function refreshDialogue(?oldToo = false)
 	var dialogueText:String = textStart < entry.length ? entry.substr(textStart).trim() : '';
 	
 	// Preserve localized dialogue keys, but never pass null into StringTools.
-	var localizedLine:Null<String> = dialogueText.indexOf('dialogue_') >= 0
+	var localizedLine:Null<String> = StringTools.contains(dialogueText, 'dialogue_')
 		? Lang.str(dialogueText)
 		: dialogueText;
 	var line:String = localizedLine ?? dialogueText;
