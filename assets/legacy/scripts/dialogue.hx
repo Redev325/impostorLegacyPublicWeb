@@ -97,17 +97,31 @@ function onVidEnd()
 	vidPlaying = false;
 	if (IS_HTML5)
 	{
+		// The DOM video has already been cleaned up by Html5Video.finish().
+		// Keep the game cameras explicitly visible and defer the gameplay/dialogue
+		// handoff to the next Flixel tick instead of mutating game state directly
+		// from the browser's media-ended event.
 		Html5Video.stop();
 		dialogueVideo = null;
 		camGame.visible = true;
-		// The HTML5 video is a DOM layer above Flixel. Remove the temporary
-		// Flixel black cover immediately when the video has ended so a stale
-		// cover cannot leave the game looking permanently black.
+		camHUD.visible = true;
+		camOther.visible = true;
 		skipText.visible = false;
-		if (dialogueAfter && (PlayState.isStoryMode || !videoCheckStory))
-			readDialogue();
-		else
-			startCountdown();
+
+		new FlxTimer().start(0, function(_) {
+			try
+			{
+				if (dialogueAfter && (PlayState.isStoryMode || !videoCheckStory))
+					readDialogue();
+				else
+					startCountdown();
+			}
+			catch (e:Dynamic)
+			{
+				trace('HTML5 post-cutscene handoff error: ' + e);
+				try startCountdown() catch (fallback:Dynamic) trace('HTML5 countdown fallback error: ' + fallback);
+			}
+		});
 		return;
 	}
 	dialogueVideo.destroy();
