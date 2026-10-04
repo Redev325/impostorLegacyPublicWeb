@@ -34,35 +34,57 @@ jobs:
           haxelib list | grep -q '^hxpkg' || (echo 'hxpkg installation failed' && exit 1)
       - name: Install Project Libraries
         run: |
-          set -e
+          set -euo pipefail
           haxelib run hxpkg setup
-          haxelib run hxpkg install || true
 
-          # HxPKG can report individual Haxelib failures while leaving the
-          # remaining libraries installed. The compiler still requires every
-          # exact version declared by Project.xml, so explicitly repair the
-          # versioned libraries before compilation.
-          install_haxelib() {
+          # Do not use the Haxelib package server for project dependencies.
+          # It is currently returning a MySQL backend error in CI. Install
+          # every dependency directly from its pinned Git commit instead.
+          install_git_haxelib() {
             local name="$1"
-            local version="$2"
-            for attempt in 1 2 3 4 5; do
-              if haxelib install "$name" "$version" --quiet; then
-                return 0
-              fi
-              echo "Retrying $name $version (attempt $((attempt + 1))/5)..."
-              sleep 5
-            done
-            echo "Failed to install $name $version after 5 attempts."
-            return 1
+            local url="$2"
+            local ref="$3"
+            local subdir="$4"
+
+            local dir="$GITHUB_WORKSPACE/.haxelib-sources/$name"
+            rm -rf "$dir"
+            mkdir -p "$(dirname "$dir")"
+            git clone --no-tags --filter=blob:none "$url" "$dir"
+            git -C "$dir" checkout --detach "$ref"
+
+            if [ "$subdir" = "." ]; then
+              haxelib dev "$name" "$dir"
+            else
+              haxelib dev "$name" "$dir/$subdir"
+            fi
           }
 
-          install_haxelib flixel-ui 2.6.4
-          install_haxelib hscript 2.6.0
-          install_haxelib hxcpp-debug-server 1.2.4
-          install_haxelib hxvlc 2.2.6
-          install_haxelib hxdiscord_rpc 1.2.4
-          install_haxelib hxjsonast 1.1.0
-          install_haxelib json5hx 1.0.2
+          install_git_haxelib flixel https://github.com/FunkinCrew/flixel.git 6fb97f4d9498c734b1cd8adbb3305e8bf1c6ad5e .
+          install_git_haxelib flixel-addons https://github.com/FunkinCrew/flixel-addons.git 187f93b34f93c6a405d634a42913c745e443463a .
+          install_git_haxelib flixel-ui https://github.com/HaxeFlixel/flixel-ui.git c52179b1fba9e505b3045afcd647e7952c07991b .
+          install_git_haxelib flixel-animate https://github.com/MaybeMaru/flixel-animate.git 4fb307acac9379966dfa0b7619b37036fcd39b32 .
+          install_git_haxelib hscript https://github.com/HaxeFoundation/hscript.git acdf040c2eb8766568999b2cdaf4f9f4de52d181 .
+          install_git_haxelib hscript-iris https://github.com/pisayesiwsi/hscript-iris.git 62d828b5f9100867bb30becd5c9fa251b138ba1a .
+          install_git_haxelib hxcpp https://github.com/FunkinCrew/hxcpp.git bfe01edc20cdc54fe7f54f1f2124b8959646144c .
+          install_git_haxelib hxvlc https://github.com/MAJigsaw77/hxvlc.git 3a40e68d8327d33ec0f91a6bdb919540c4fc0202 .
+          install_git_haxelib lime https://github.com/FunkinCrew/lime.git 6421de16b9dfa4fb55c19f12db65d392a57585c8 .
+          install_git_haxelib openfl https://github.com/FunkinCrew/openfl.git b5565adc75511b3e4c8b384ee25ce7401b11ef32 .
+          install_git_haxelib hxdiscord_rpc https://github.com/MAJigsaw77/hxdiscord_rpc.git bff4d27dcf1e02a06b84871cce9fe7d624ff517f .
+          install_git_haxelib haxeui-flixel https://github.com/haxeui/haxeui-flixel.git b899a4c7d7318c5ff2b1bb645fbc73728fad1ac9 .
+          install_git_haxelib haxeui-core https://github.com/FunkinCrew/haxeui-core.git 998534fb830450ca1e60c47a9524af5730431145 .
+          install_git_haxelib moonchart https://github.com/MaybeMaru/moonchart.git 8c9d7cfe3280587fa71a8f3c4444c97bc7b63714 .
+          install_git_haxelib funkin.vis https://github.com/FunkinCrew/funkVis.git 1966f8fbbbc509ed90d4b520f3c49c084fc92fd6 .
+          install_git_haxelib grig.audio https://github.com/FunkinCrew/grig.audio.git 8567c4dad34cfeaf2ff23fe12c3796f5db80685e .
+          install_git_haxelib json2object https://github.com/FunkinCrew/json2object.git a8c26f18463c98da32f744c214fe02273e1823fa .
+          install_git_haxelib hxjsonast https://github.com/nadako/hxjsonast.git 3131eb00097ab6c6be2d43094189d5c4254dcb8c .
+          install_git_haxelib json5hx https://github.com/Sword352/json5hx.git ce7ca98abf35a928c664087ff840e90091615ec6 .
+
+          # hxcpp-debug-server lives in a subdirectory of the hxcpp-debugger
+          # repository, so register that exact 1.2.4 package path as a dev lib.
+          install_git_haxelib hxcpp-debug-server https://github.com/vshaxe/hxcpp-debugger.git 818185048aa43e9dfa5a1a6935d50679626d13f5 hxcpp-debug-server
+
+          echo "Pinned Haxelib dependencies installed from Git successfully."
+          haxelib list
       - name: Build Lime native tools
         run: |
           cd .haxelib/lime/git
