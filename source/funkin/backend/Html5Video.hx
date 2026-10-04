@@ -139,8 +139,10 @@ class Html5Video
 
 			// Poll the media clock as a final end-of-video fallback. Some browsers
 			// can omit both `ended` and a final `timeupdate` for DOM video.
-			endWatchdog = Timer.repeat(function() {
-				if (currentVideo != video || finished) return;
+			endWatchdog = new Timer(100);
+			endWatchdog.run = function() {
+				if (currentVideo != video || finished)
+					return;
 				try
 				{
 					final duration:Float = video.duration;
@@ -148,7 +150,7 @@ class Html5Video
 						finish(endCallback);
 				}
 				catch (e:Dynamic) {}
-			}, 100);
+			};
 
 			loadTimeout = Timer.delay(function() {
 				if (currentVideo == video && !finished && !started)
@@ -270,6 +272,7 @@ class Html5Video
 			loadTimeout.stop();
 			loadTimeout = null;
 		}
+		stopEndWatchdog();
 
 		final video = currentVideo;
 		currentVideo = null;
