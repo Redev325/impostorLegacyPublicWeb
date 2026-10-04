@@ -97,9 +97,6 @@ function onVidEnd()
 	vidPlaying = false;
 	if (IS_HTML5)
 	{
-		// The HTML5 PlayState may start the intro before the song script's
-		// onLoad callback runs. Ignore a duplicate request while this video exists.
-		if (dialogueVideo != null || vidPlaying) return;
 		// The DOM video has already been cleaned up by Html5Video.finish().
 		// Keep the game cameras explicitly visible and defer the gameplay/dialogue
 		// handoff to the next Flixel tick instead of mutating game state directly
@@ -141,6 +138,9 @@ public function videoCutscene(?vid:String = 'sussus-moogus', ?dAfter:Bool, ?canS
 {
 	if (IS_HTML5)
 	{
+		// The HTML5 PlayState starts the Sussus Moogus intro directly, and the
+		// song script may request the same intro afterward. Ignore that duplicate.
+		if (dialogueVideo != null || vidPlaying) return;
 		if ((videoCheckStory && !isStoryMode) || PlayState.seenCutscene)
 		{
 			startCountdown();
