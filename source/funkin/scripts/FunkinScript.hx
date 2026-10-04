@@ -443,6 +443,9 @@ class FunkinScript extends IrisEx implements IFlxDestroyable
 		};
 		set('readDialogue', function():Dynamic return callDialogue('readDialogue', []));
 		set('videoCutscene', Reflect.makeVarArgs(function(args:Array<Dynamic>):Dynamic return callDialogue('videoCutscene', args)));
+		set('startCountdown', function():Void {
+			if (PlayState.instance != null) PlayState.instance.startCountdown();
+		});
 		#end
 
 		#if html5
