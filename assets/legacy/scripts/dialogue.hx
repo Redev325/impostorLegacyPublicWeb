@@ -349,7 +349,23 @@ function refreshDialogue(?oldToo = false)
 	curEmote = Std.string(splitName[2]).trim();
 	if (curEmote.length == 0) curEmote = 'neutral';
 	
-	v4SpeakerShit();
+	// Never let a missing HTML5 portrait/audio asset prevent the dialogue
+	// box and text from appearing. The original desktop script assumes all
+	// dialogue assets are synchronous; the web build cannot make that assumption.
+	try
+	{
+		v4SpeakerShit();
+	}
+	catch (e:Dynamic)
+	{
+		trace('HTML5 dialogue speaker setup failed: ' + e);
+		curSide = 0;
+		curSound = 'red';
+		curIcon = 'red';
+		boxChar = Lang.str('red', 'Red');
+		dropText.text = boxChar;
+		try icon.changeIcon(curIcon) catch (_) {}
+	}
 	
 	var textStart:Int = curCharacter.length + 3 + curEmote.length;
 	var dialogueText:String = textStart < entry.length ? entry.substr(textStart).trim() : '';
@@ -377,8 +393,15 @@ function refreshDialogue(?oldToo = false)
 	
 	var who = portrait[curSide];
 	
-	who.animation.onLoop.removeAll();
-	who.playAnim(curEmote);
+	try
+	{
+		who.animation.onLoop.removeAll();
+		who.playAnim(curEmote);
+	}
+	catch (e:Dynamic)
+	{
+		trace('HTML5 dialogue portrait animation setup failed: ' + e);
+	}
 	
 	swagDialogue.completeCallback = function() {
 		dialogueEnded = true;
