@@ -103,6 +103,53 @@ jobs:
           git -C "$LIME_DIR" submodule update --init --recursive --force
           haxelib run lime rebuild cpp -release
 
+      - name: Restore Haxelib development registrations
+        run: |
+          set -euo pipefail
+          # Lime's native-tool rebuild can alter Haxelib's active repository.
+          # Re-register the pinned source trees immediately before compiling
+          # so Project.xml resolves every library deterministically.
+          register_dev() {
+            local name="$1"
+            local subdir="$2"
+            local dir="$GITHUB_WORKSPACE/.haxelib-sources/$name"
+            test -d "$dir"
+            if [ "$subdir" = "." ]; then
+              haxelib dev "$name" "$dir"
+            else
+              test -d "$dir/$subdir"
+              haxelib dev "$name" "$dir/$subdir"
+            fi
+          }
+
+          register_dev flixel .
+          register_dev flixel-addons .
+          register_dev flixel-ui .
+          register_dev flixel-animate .
+          register_dev hscript .
+          register_dev hscript-iris .
+          register_dev hxcpp .
+          register_dev hxvlc .
+          register_dev lime .
+          register_dev openfl .
+          register_dev hxdiscord_rpc .
+          register_dev haxeui-flixel .
+          register_dev haxeui-core .
+          register_dev moonchart .
+          register_dev funkin.vis .
+          register_dev grig.audio .
+          register_dev json2object .
+          register_dev hxjsonast .
+          register_dev json5hx .
+          register_dev hxcpp-debug-server hxcpp-debug-server
+
+          echo "===== ACTIVE HAXELIB PATHS ====="
+          for lib in flixel flixel-addons flixel-ui hscript hscript-iris hxcpp hxvlc lime openfl hxdiscord_rpc haxeui-flixel haxeui-core moonchart funkin.vis grig.audio json2object hxjsonast json5hx hxcpp-debug-server; do
+            echo "--- $lib ---"
+            haxelib path "$lib" >/dev/null
+          done
+          echo "Haxelib development registrations verified."
+
       - name: Disable native-only video backend for HTML5
         run: |
           cat > source/funkin/video/FunkinVideoSprite.hx <<'EOF'
