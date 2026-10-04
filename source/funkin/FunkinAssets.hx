@@ -606,6 +606,7 @@ class FunkinAssets
 
 	public static function getHtml5SongScript(file:String):Null<String>
 	{
+		if (file == null || file.length == 0) return null;
 		final colon:Int = file.indexOf(':');
 		final normalized:String = colon > 0 ? file.substr(colon + 1) : file;
 		final cached:Null<String> = html5SongScriptText.get(file) ?? html5SongScriptText.get(normalized);
@@ -649,6 +650,30 @@ class FunkinAssets
 
 		final fallback:String = sanitized.length > 0 ? sanitized : raw;
 		return 'assets/videos/' + fallback + '.mp4';
+	}
+	#end
+
+	#if html5
+	/**
+	 * Dialogue character JSON is part of the synchronously loaded gameplay
+	 * library. Read it directly instead of routing through the generic content
+	 * loader, which also checks the song-script cache.
+	 */
+	public static function getHtml5DialogueCharacter(char:String):Null<String>
+	{
+		final raw:String = Std.string(char ?? '').trim().toLowerCase();
+		if (raw.length == 0) return null;
+		final assetId:String = 'gameplay:assets/data/dialogue/' + raw + '.json';
+		try
+		{
+			if (Assets.exists(assetId, AssetType.TEXT))
+				return Assets.getText(assetId);
+		}
+		catch (e:Dynamic)
+		{
+			Logger.log('Failed to read HTML5 dialogue character ' + raw + ': ' + e, WARN);
+		}
+		return null;
 	}
 	#end
 
