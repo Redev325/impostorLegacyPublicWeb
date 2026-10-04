@@ -51,11 +51,16 @@ class Html5Video
 			video.style.height = '100vh';
 			video.style.objectFit = 'contain';
 			video.style.backgroundColor = 'black';
+			video.style.visibility = 'hidden';
 			video.style.zIndex = '99999';
 
 			final markStarted:Void->Void = function() {
 				if (currentVideo != video || finished || started || pauseRequested) return;
 				started = true;
+				// Keep the Flixel black cover in control until the browser has
+				// actually started presenting the video. This prevents a blank
+				// HTMLVideoElement frame from flashing white on slower browsers.
+				try video.style.visibility = 'visible' catch (e:Dynamic) {}
 
 				if (loadTimeout != null)
 				{
@@ -104,6 +109,9 @@ class Html5Video
 			video.onerror = function(_) finish(errorCallback);
 
 			Browser.document.body.appendChild(video);
+			// Explicitly start loading after insertion so browsers initialize the
+			// media element consistently when the URL is served from GitHub Pages.
+			try video.load() catch (e:Dynamic) {}
 
 			loadTimeout = Timer.delay(function() {
 				if (currentVideo == video && !finished && !started)
@@ -169,21 +177,7 @@ class Html5Video
 				loadTimeout = null;
 			}
 
-			if (video != null)
-			{
-				// Hide and detach the DOM video before handing control back to Flixel.
-				// This prevents a final white/last video frame from remaining above the
-				// game canvas when a browser refuses the normal ended event.
-				try video.pause() catch (e:Dynamic) {}
-				try video.style.display = 'none' catch (e:Dynamic) {}
-				try video.removeAttribute('src') catch (e:Dynamic) {}
-				try video.load() catch (e:Dynamic) {}
-				try
-				{
-					if (video.parentNode != null) video.parentNode.removeChild(video);
-				}
-				catch (e:Dynamic) {}
-			}
+			cleanupVideo(video);
 		#end
 	}
 
@@ -244,17 +238,30 @@ class Html5Video
 		endCallback = null;
 		errorCallback = null;
 
-		if (video != null)
-		{
-			try video.pause() catch (e:Dynamic) {}
-			try
-			{
-				Browser.document.body.removeChild(video);
-			}
-			catch (e:Dynamic) {}
-		}
+		// Do the full cleanup here, not only in stop(). The normal ended/error
+		// path calls finish() first and then the callback, so cleanup must happen
+		// before control is returned to PlayState.
+		cleanupVideo(video);
 
 		if (cb != null) cb();
+	}
+
+	static function cleanupVideo(video:Null<js.html.VideoElement>):Void
+	{
+		if (video == null) return;
+
+		// Hide the DOM element before detaching it so a stale compositor frame
+		// can never remain over the Flixel canvas during the cutscene transition.
+		try video.style.visibility = 'hidden' catch (e:Dynamic) {}
+		try video.style.display = 'none' catch (e:Dynamic) {}
+		try video.pause() catch (e:Dynamic) {}
+		try video.removeAttribute('src') catch (e:Dynamic) {}
+		try video.load() catch (e:Dynamic) {}
+		try
+		{
+			if (video.parentNode != null) video.parentNode.removeChild(video);
+		}
+		catch (e:Dynamic) {}
 	}
 	#end
 }
