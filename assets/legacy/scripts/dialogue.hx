@@ -100,12 +100,20 @@ function onVidEnd()
 		Html5Video.stop();
 		dialogueVideo = null;
 		camGame.visible = true;
+		// The HTML5 video is a DOM layer above Flixel. Remove the temporary
+		// Flixel black cover immediately when the video has ended so a stale
+		// cover cannot leave the game looking permanently black.
+		if (blackYnot != null)
+		{
+			blackYnot.visible = false;
+			blackYnot.alpha = 0;
+			blackYnot.kill();
+		}
 		skipText.visible = false;
 		if (dialogueAfter && (PlayState.isStoryMode || !videoCheckStory))
 			readDialogue();
 		else
 			startCountdown();
-		if (blackYnot != null) FlxTween.tween(blackYnot, {alpha: 0}, 0.5, {onComplete: function() blackYnot.kill()});
 		return;
 	}
 	dialogueVideo.destroy();
