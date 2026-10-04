@@ -74,6 +74,10 @@ jobs:
           install_git_haxelib haxeui-core https://github.com/FunkinCrew/haxeui-core.git 998534fb830450ca1e60c47a9524af5730431145 .
           install_git_haxelib moonchart https://github.com/MaybeMaru/moonchart.git 8c9d7cfe3280588fa71a8f3c4444c97bc7b63714 .
           install_git_haxelib funkin.vis https://github.com/FunkinCrew/funkVis.git 1966f8fbbbc509ed90d4b520f3c49c084fc92fd6 .
+          # grig.audio depends on tink_core 1.26.0. Register that pinned
+          # transitive dependency as well because the Haxelib package server
+          # is unavailable in CI.
+          install_git_haxelib tink_core https://github.com/haxetink/tink_core.git ed29a56e13c4e90a0912a63a1aca0ff91eb0f92b .
           install_git_haxelib grig.audio https://github.com/FunkinCrew/grig.audio.git 8567c4dad34cfeaf2ff23fe12c3796f5db80685e .
           install_git_haxelib json2object https://github.com/FunkinCrew/json2object.git a8c26f18463c98da32f744c214fe02273e1823fa .
           install_git_haxelib hxjsonast https://github.com/nadako/hxjsonast.git 3131eb00097ab6c6be2d43094189d5c4254dcb8c .
@@ -137,6 +141,7 @@ jobs:
           register_dev haxeui-core .
           register_dev moonchart .
           register_dev funkin.vis .
+          register_dev tink_core .
           register_dev grig.audio .
           register_dev json2object .
           register_dev hxjsonast .
@@ -144,7 +149,7 @@ jobs:
           register_dev hxcpp-debug-server hxcpp-debug-server
 
           echo "===== ACTIVE HAXELIB PATHS ====="
-          for lib in flixel flixel-addons flixel-ui hscript hscript-iris hxcpp hxvlc lime openfl hxdiscord_rpc haxeui-flixel haxeui-core moonchart funkin.vis grig.audio json2object hxjsonast json5hx hxcpp-debug-server; do
+          for lib in flixel flixel-addons flixel-ui hscript hscript-iris hxcpp hxvlc lime openfl hxdiscord_rpc haxeui-flixel haxeui-core moonchart funkin.vis tink_core grig.audio json2object hxjsonast json5hx hxcpp-debug-server; do
             echo "--- $lib ---"
             haxelib path "$lib" >/dev/null
           done
