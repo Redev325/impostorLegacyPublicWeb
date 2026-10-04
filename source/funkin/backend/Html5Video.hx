@@ -9,6 +9,7 @@ class Html5Video
 {
 	#if html5
 	static var currentVideo:Null<js.html.VideoElement> = null;
+	static var currentBackdrop:Null<js.html.DivElement> = null;
 	static var endCallback:Null<Void->Void> = null;
 	static var errorCallback:Null<Void->Void> = null;
 	static var finished:Bool = false;
@@ -27,6 +28,18 @@ class Html5Video
 				if (onError != null) onError();
 				return false;
 			}
+
+			final backdrop:js.html.DivElement = cast Browser.document.createElement('div');
+			currentBackdrop = backdrop;
+			backdrop.style.position = 'fixed';
+			backdrop.style.left = '0';
+			backdrop.style.top = '0';
+			backdrop.style.width = '100vw';
+			backdrop.style.height = '100vh';
+			backdrop.style.backgroundColor = 'black';
+			backdrop.style.pointerEvents = 'none';
+			backdrop.style.zIndex = '99998';
+			Browser.document.body.appendChild(backdrop);
 
 			final video:js.html.VideoElement = cast Browser.document.createElement('video');
 			currentVideo = video;
@@ -54,13 +67,29 @@ class Html5Video
 			video.style.visibility = 'hidden';
 			video.style.zIndex = '99999';
 
+			final revealVideo:Void->Void = function() {
+				if (currentVideo != video || finished || pauseRequested) return;
+				try video.style.visibility = 'visible' catch (e:Dynamic) {}
+			};
+
+			final revealOnPresentedFrame:Void->Void = function() {
+				if (currentVideo != video || finished || !started || pauseRequested) return;
+				try
+				{
+					final requestFrame:Dynamic = Reflect.field(video, 'requestVideoFrameCallback');
+					if (requestFrame != null)
+					{
+						Reflect.callMethod(video, requestFrame, [function(_, _) revealVideo()]);
+						return;
+					}
+				}
+				catch (e:Dynamic) {}
+				Timer.delay(revealVideo, 50);
+			};
+
 			final markStarted:Void->Void = function() {
 				if (currentVideo != video || finished || started || pauseRequested) return;
 				started = true;
-				// Keep the Flixel black cover in control until the browser has
-				// actually started presenting the video. This prevents a blank
-				// HTMLVideoElement frame from flashing white on slower browsers.
-				try video.style.visibility = 'visible' catch (e:Dynamic) {}
 
 				if (loadTimeout != null)
 				{
@@ -69,6 +98,7 @@ class Html5Video
 				}
 
 				if (onReady != null) onReady();
+				revealOnPresentedFrame();
 			};
 
 			final requestPlay:Void->Void = function() {
@@ -244,6 +274,31 @@ class Html5Video
 		cleanupVideo(video);
 
 		if (cb != null) cb();
+
+		// Keep the guaranteed-black backdrop over the canvas for the remainder
+		// of this frame, then hand the screen back to Flixel on the next paint.
+		// This removes the white gap that can occur between video teardown and
+		// the first rendered PlayState frame.
+		try
+		{
+			Browser.window.requestAnimationFrame(function(_) cleanupBackdrop());
+		}
+		catch (e:Dynamic)
+		{
+			Timer.delay(cleanupBackdrop, 16);
+		}
+	}
+
+	static function cleanupBackdrop():Void
+	{
+		final backdrop = currentBackdrop;
+		currentBackdrop = null;
+		if (backdrop == null) return;
+		try
+		{
+			if (backdrop.parentNode != null) backdrop.parentNode.removeChild(backdrop);
+		}
+		catch (e:Dynamic) {}
 	}
 
 	static function cleanupVideo(video:Null<js.html.VideoElement>):Void
