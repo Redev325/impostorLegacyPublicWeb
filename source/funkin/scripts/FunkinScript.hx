@@ -395,6 +395,10 @@ class FunkinScript extends IrisEx implements IFlxDestroyable
 		// Make the HTML5 song-asset cache available to legacy HScript without
 		// requiring an import that Iris cannot resolve on the browser target.
 		set("FunkinAssets", funkin.FunkinAssets);
+		set("resolveHtml5VideoPath", function(videoKey:String):String return funkin.FunkinAssets.resolveHtml5VideoPath(videoKey));
+		set("getHtml5DialogueCharacter", function(char:String):Null<String> return funkin.FunkinAssets.getHtml5DialogueCharacter(char));
+		set("getHtml5SongDialogue", function(songName:String):Null<String> return funkin.FunkinAssets.getHtml5SongDialogue(songName));
+		set("getHtml5SongInfo", function(songName:String):Null<String> return funkin.FunkinAssets.getHtml5SongInfo(songName));
 		#end
 		#if html5
 		// V5 legacy song scripts call this as a global helper. Expose it here
