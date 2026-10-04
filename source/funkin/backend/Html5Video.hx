@@ -93,6 +93,14 @@ class Html5Video
 			video.oncanplay = function(_) requestPlay();
 			video.onplay = function(_) markStarted();
 			video.onended = function(_) finish(endCallback);
+			// Some HTML5/browser combinations do not reliably dispatch `ended`.
+			// Detect the final video timestamp as a second, non-invasive end path.
+			video.ontimeupdate = function(_) {
+				if (currentVideo != video || finished || !started) return;
+				final duration:Float = video.duration;
+				if (!Math.isNaN(duration) && duration > 0 && video.currentTime >= duration - 0.10)
+					finish(endCallback);
+			};
 			video.onerror = function(_) finish(errorCallback);
 
 			Browser.document.body.appendChild(video);
@@ -163,10 +171,16 @@ class Html5Video
 
 			if (video != null)
 			{
+				// Hide and detach the DOM video before handing control back to Flixel.
+				// This prevents a final white/last video frame from remaining above the
+				// game canvas when a browser refuses the normal ended event.
 				try video.pause() catch (e:Dynamic) {}
+				try video.style.display = 'none' catch (e:Dynamic) {}
+				try video.removeAttribute('src') catch (e:Dynamic) {}
+				try video.load() catch (e:Dynamic) {}
 				try
 				{
-					Browser.document.body.removeChild(video);
+					if (video.parentNode != null) video.parentNode.removeChild(video);
 				}
 				catch (e:Dynamic) {}
 			}
