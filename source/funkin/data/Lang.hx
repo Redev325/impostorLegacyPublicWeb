@@ -127,10 +127,16 @@ class Lang
 		return current?.fontReplacements?.get(fnt) ?? fnt;
 	}
 	
-	public static inline function hasSpecial(flag:String):Bool
+	public static function hasSpecial(flag:String):Bool
 	{
-		final s = current?.special;
-		return s != null ? s.contains(flag) : false;
+		if (flag == null) return false;
+		final active:Null<Language> = current ?? fallback;
+		if (active == null || active.special == null) return false;
+		for (entry in active.special)
+		{
+			if (entry == flag) return true;
+		}
+		return false;
 	}
 	
 	public static inline function hasFlag(flag:String):Bool
