@@ -72,7 +72,7 @@ jobs:
           install_git_haxelib hxdiscord_rpc https://github.com/MAJigsaw77/hxdiscord_rpc.git bff4d27dcf1e02a06b84871cce9fe7d624ff517f .
           install_git_haxelib haxeui-flixel https://github.com/haxeui/haxeui-flixel.git b899a4c7d7318c5ff2b1bb645fbc73728fad1ac9 .
           install_git_haxelib haxeui-core https://github.com/FunkinCrew/haxeui-core.git 998534fb830450ca1e60c47a9524af5730431145 .
-          install_git_haxelib moonchart https://github.com/MaybeMaru/moonchart.git 8c9d7cfe3280587fa71a8f3c4444c97bc7b63714 .
+          install_git_haxelib moonchart https://github.com/MaybeMaru/moonchart.git 8c9d7cfe3280588fa71a8f3c4444c97bc7b63714 .
           install_git_haxelib funkin.vis https://github.com/FunkinCrew/funkVis.git 1966f8fbbbc509ed90d4b520f3c49c084fc92fd6 .
           install_git_haxelib grig.audio https://github.com/FunkinCrew/grig.audio.git 8567c4dad34cfeaf2ff23fe12c3796f5db80685e .
           install_git_haxelib json2object https://github.com/FunkinCrew/json2object.git a8c26f18463c98da32f744c214fe02273e1823fa .
