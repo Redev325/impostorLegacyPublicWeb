@@ -72,21 +72,6 @@ class Html5Video
 				try video.style.visibility = 'visible' catch (e:Dynamic) {}
 			};
 
-			final revealOnPresentedFrame:Void->Void = function() {
-				if (currentVideo != video || finished || !started || pauseRequested) return;
-				try
-				{
-					final requestFrame:Dynamic = Reflect.field(video, 'requestVideoFrameCallback');
-					if (requestFrame != null)
-					{
-						Reflect.callMethod(video, requestFrame, [function(_, _) revealVideo()]);
-						return;
-					}
-				}
-				catch (e:Dynamic) {}
-				Timer.delay(revealVideo, 50);
-			};
-
 			final markStarted:Void->Void = function() {
 				if (currentVideo != video || finished || started || pauseRequested) return;
 				started = true;
@@ -98,7 +83,6 @@ class Html5Video
 				}
 
 				if (onReady != null) onReady();
-				revealOnPresentedFrame();
 			};
 
 			final requestPlay:Void->Void = function() {
@@ -124,9 +108,18 @@ class Html5Video
 				}
 			};
 
-			video.onloadeddata = function(_) requestPlay();
+			// loadeddata means the browser has decoded the first video frame.
+			// Reveal the video at that point so the black backdrop covers only the
+			// pre-first-frame period, rather than waiting on requestVideoFrameCallback.
+			video.onloadeddata = function(_) {
+				revealVideo();
+				requestPlay();
+			};
 			video.oncanplay = function(_) requestPlay();
-			video.onplay = function(_) markStarted();
+			video.onplay = function(_) {
+				markStarted();
+				revealVideo();
+			};
 			video.onended = function(_) finish(endCallback);
 			// Some HTML5/browser combinations do not reliably dispatch `ended`.
 			// Detect the final video timestamp as a second, non-invasive end path.
