@@ -334,10 +334,12 @@ jobs:
           grep -nE '<library name=.*preload=' Project.xml || true
 
           echo "===== DECODED HTML5 ASSET MANIFESTS ====="
-          LIME_MANIFEST="$(find .haxelib/lime -type f -path '*/src/lime/utils/AssetManifest.hx' -print -quit 2>/dev/null || true)"
+          # Haxelib dependencies are registered as development libraries under
+          # .haxelib-sources, so the old .haxelib/lime/git path does not exist.
+          LIME_MANIFEST="$(find "$GITHUB_WORKSPACE/.haxelib-sources/lime" -type f -path '*/src/lime/utils/AssetManifest.hx' -print -quit 2>/dev/null || true)"
           if [ -z "$LIME_MANIFEST" ]; then
             echo "ERROR: Could not find Lime AssetManifest.hx for manifest decoding."
-            find .haxelib/lime -type f -name AssetManifest.hx -print || true
+            find "$GITHUB_WORKSPACE/.haxelib-sources/lime" -type f -name AssetManifest.hx -print || true
             exit 1
           fi
           LIME_SRC="$(printf '%s' "$LIME_MANIFEST" | sed 's#/lime/utils/AssetManifest\.hx$##')"
