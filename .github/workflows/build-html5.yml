@@ -34,8 +34,35 @@ jobs:
           haxelib list | grep -q '^hxpkg' || (echo 'hxpkg installation failed' && exit 1)
       - name: Install Project Libraries
         run: |
+          set -e
           haxelib run hxpkg setup
-          haxelib run hxpkg install
+          haxelib run hxpkg install || true
+
+          # HxPKG can report individual Haxelib failures while leaving the
+          # remaining libraries installed. The compiler still requires every
+          # exact version declared by Project.xml, so explicitly repair the
+          # versioned libraries before compilation.
+          install_haxelib() {
+            local name="$1"
+            local version="$2"
+            for attempt in 1 2 3 4 5; do
+              if haxelib install "$name" "$version" --quiet; then
+                return 0
+              fi
+              echo "Retrying $name $version (attempt $((attempt + 1))/5)..."
+              sleep 5
+            done
+            echo "Failed to install $name $version after 5 attempts."
+            return 1
+          }
+
+          install_haxelib flixel-ui 2.6.4
+          install_haxelib hscript 2.6.0
+          install_haxelib hxcpp-debug-server 1.2.4
+          install_haxelib hxvlc 2.2.6
+          install_haxelib hxdiscord_rpc 1.2.4
+          install_haxelib hxjsonast 1.1.0
+          install_haxelib json5hx 1.0.2
       - name: Build Lime native tools
         run: |
           cd .haxelib/lime/git
