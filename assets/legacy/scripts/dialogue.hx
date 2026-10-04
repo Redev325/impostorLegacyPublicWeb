@@ -204,8 +204,21 @@ function speakerAnims(char:String = 'bf')
 	}
 	else
 	{
+		#if html5
+		var rawDialogueChar:Null<String> = FunkinAssets.getHtml5DialogueCharacter(char);
+		if (rawDialogueChar == null)
+		{
+			return portrait[curSide];
+		}
+		dialogueChar = FunkinAssets.parseJson5(rawDialogueChar);
+		#else
 		var path:String = Paths.getPath('data/dialogue/' + char + '.json', null, PathsTestMode.NORMAL);
 		dialogueChar = FunkinAssets.parseJson5(FunkinAssets.getContent(path));
+		#end
+		if (dialogueChar == null)
+		{
+			return portrait[curSide];
+		}
 		charMap[char] = dialogueChar;
 		loadUp = true;
 	}
@@ -316,7 +329,7 @@ function refreshDialogue(?oldToo = false)
 	var dialogueText:String = textStart < entry.length ? entry.substr(textStart).trim() : '';
 	
 	// Preserve localized dialogue keys, but never pass null into StringTools.
-	var localizedLine:Null<String> = StringTools.contains(dialogueText, 'dialogue_')
+	var localizedLine:Null<String> = dialogueText.indexOf('dialogue_') >= 0
 		? Lang.str(dialogueText)
 		: dialogueText;
 	var line:String = localizedLine ?? dialogueText;
