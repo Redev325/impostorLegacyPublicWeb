@@ -458,6 +458,29 @@ public function readDialogue()
 	var safeSong:String = Paths.sanitize(activeSong);
 	#if html5
 	var cachedDialogue:Null<String> = getHtml5SongDialogue(safeSong);
+	// Sussus Moogus must still have its real dialogue even when an older
+	// browser cache/build is missing the tiny dialogue.txt asset. Keep the
+	// source file authoritative when available, with this exact source-text
+	// fallback as a last-resort HTML5 safety net.
+	if ((cachedDialogue == null || cachedDialogue.trim().length == 0) && safeSong == 'sussus-moogus')
+	{
+		cachedDialogue = ':red:sad:dialogue_moogus0\\n'
+			+ ':bf:neutral:dialogue_moogus1\\n'
+			+ ':gf:suspect:dialogue_moogus2\\n'
+			+ ':gf:suspect:dialogue_moogus3\\n'
+			+ ':gf:q:dialogue_moogus4\\n'
+			+ ':bf:neutral:dialogue_moogus5\\n'
+			+ ':bf:q:dialogue_moogus6\\n'
+			+ ':red:sad:dialogue_moogus7\\n'
+			+ ':gf:happy:dialogue_moogus8\\n'
+			+ ':gf:mad:dialogue_moogus9\\n'
+			+ ':red:neutral:dialogue_moogus10\\n'
+			+ ':bf:happy:dialogue_moogus11\\n'
+			+ ':red:happy:dialogue_moogus12\\n'
+			+ ':red:happy:dialogue_moogus13\\n'
+			+ ':bf:neutral:dialogue_moogus14';
+		trace('HTML5 Sussus Moogus dialogue.txt fallback activated');
+	}
 	if (cachedDialogue != null)
 		dialogueList = cachedDialogue.length > 0 ? cachedDialogue.split("\n") : [];
 	else
