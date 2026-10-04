@@ -138,7 +138,7 @@ public function videoCutscene(?vid:String = 'sussus-moogus', ?dAfter:Bool, ?canS
 		blackYnot.camera = camOther;
 		addDialogueObject(blackYnot);
 
-		final videoPath:String = FunkinAssets.resolveHtml5VideoPath(vid);
+		final videoPath:String = resolveHtml5VideoPath(vid);
 		dialogueVideo = videoPath;
 		final ready:Void->Void = function() {
 			vidPlaying = true;
@@ -217,7 +217,7 @@ function speakerAnims(char:String = 'bf')
 	else
 	{
 		#if html5
-		var rawDialogueChar:Null<String> = FunkinAssets.getHtml5DialogueCharacter(char);
+		var rawDialogueChar:Null<String> = getHtml5DialogueCharacter(char);
 		if (rawDialogueChar == null)
 		{
 			return portrait[curSide];
@@ -426,7 +426,7 @@ public function getHudV5SongDialogue(?song:String):Null<String>
 	final activeSong:String = song ?? PlayState.SONG?.song ?? '';
 	final safeSong:String = Paths.sanitize(activeSong);
 	#if html5
-	return FunkinAssets.getHtml5SongDialogue(safeSong);
+	return getHtml5SongDialogue(safeSong);
 	#else
 	final txtPath:String = Paths.getPath('songs/' + safeSong + '/dialogue.txt', null, PathsTestMode.NORMAL);
 	return FunkinAssets.exists(txtPath, TEXT) ? FunkinAssets.getContent(txtPath) : null;
@@ -443,7 +443,7 @@ public function readDialogue()
 	var activeSong:String = PlayState.SONG?.song ?? '';
 	var safeSong:String = Paths.sanitize(activeSong);
 	#if html5
-	var cachedDialogue:Null<String> = FunkinAssets.getHtml5SongDialogue(safeSong);
+	var cachedDialogue:Null<String> = getHtml5SongDialogue(safeSong);
 	if (cachedDialogue != null)
 		dialogueList = cachedDialogue.length > 0 ? cachedDialogue.split("\n") : [];
 	else
