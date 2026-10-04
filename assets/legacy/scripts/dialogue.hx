@@ -103,12 +103,6 @@ function onVidEnd()
 		// The HTML5 video is a DOM layer above Flixel. Remove the temporary
 		// Flixel black cover immediately when the video has ended so a stale
 		// cover cannot leave the game looking permanently black.
-		if (blackYnot != null)
-		{
-			blackYnot.visible = false;
-			blackYnot.alpha = 0;
-			blackYnot.kill();
-		}
 		skipText.visible = false;
 		if (dialogueAfter && (PlayState.isStoryMode || !videoCheckStory))
 			readDialogue();
@@ -142,15 +136,13 @@ public function videoCutscene(?vid:String = 'sussus-moogus', ?dAfter:Bool, ?canS
 		inCutscene = true;
 		songStartCallback = () -> return Function_Stop;
 		vidPlaying = false;
-		blackYnot = new FlxSprite().makeScaledGraphic(FlxG.width + 3, FlxG.height, FlxColor.BLACK);
-		blackYnot.camera = camOther;
-		addDialogueObject(blackYnot);
-
+		// HTML5 uses a real DOM video layer with its own guaranteed-black backdrop.
+		// Keep the Flixel game camera visible underneath it so the game is restored
+		// automatically as soon as the DOM video is removed.
 		final videoPath:String = resolveHtml5VideoPath(vid);
 		dialogueVideo = videoPath;
 		final ready:Void->Void = function() {
 			vidPlaying = true;
-			camGame.visible = false;
 			textFade();
 			if (onFormat != null) onFormat();
 		};
