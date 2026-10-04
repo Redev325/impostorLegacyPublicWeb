@@ -686,7 +686,36 @@ class FunkinAssets
 	public static function getHtml5SongDialogue(songName:String):Null<String>
 	{
 		final songPath:String = Paths.sanitize(songName);
-		return html5SongDialogueText.get(songPath);
+		if (songPath.length == 0) return null;
+
+		final cached:Null<String> = html5SongDialogueText.get(songPath);
+		if (cached != null && cached.trim().length > 0)
+			return cached;
+
+		#if html5
+			// Prefer the tiny preloaded dialogue library. This is available
+			// synchronously even if the song-specific network cache was missed.
+			final folder:String = songPath == 'dlow' ? "d'low" : songPath;
+			final embeddedId:String = 'dialogue:assets/songs/' + folder + '/dialogue.txt';
+			try
+			{
+				if (Assets.exists(embeddedId, AssetType.TEXT))
+				{
+					final text:String = Assets.getText(embeddedId);
+					if (text.trim().length > 0)
+					{
+						html5SongDialogueText.set(songPath, text);
+						return text;
+					}
+				}
+			}
+			catch (e:Dynamic)
+			{
+				Logger.log('Failed to read embedded HTML5 dialogue ' + songPath + ': ' + e, WARN);
+			}
+		#end
+
+		return cached;
 	}
 
 	public static function getHtml5SongChart(songName:String, difficulty:Int):Null<String>
