@@ -280,16 +280,16 @@ class Html5Video
 		endCallback = null;
 		errorCallback = null;
 
-		// Do the full cleanup here, not only in stop(). The normal ended/error
-		// path calls finish() first and then the callback, so cleanup must happen
-		// before control is returned to PlayState.
+		// Do the full cleanup before invoking any game/script callback. The
+		// callback can load dialogue assets or run HScript, and an exception there
+		// must never leave the full-screen black DOM backdrop stuck over the game.
 		cleanupVideo(video);
-
-		if (cb != null) cb();
-
-		// The video is already gone, so there is no reason to retain the black
-		// DOM backdrop. Remove it immediately after the game callback returns.
 		cleanupBackdrop();
+
+		if (cb != null)
+		{
+			try cb() catch (e:Dynamic) trace('HTML5 video end callback error: ' + e);
+		}
 	}
 
 	static function stopEndWatchdog():Void
