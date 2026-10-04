@@ -97,6 +97,9 @@ function onVidEnd()
 	vidPlaying = false;
 	if (IS_HTML5)
 	{
+		// The HTML5 PlayState may start the intro before the song script's
+		// onLoad callback runs. Ignore a duplicate request while this video exists.
+		if (dialogueVideo != null || vidPlaying) return;
 		// The DOM video has already been cleaned up by Html5Video.finish().
 		// Keep the game cameras explicitly visible and defer the gameplay/dialogue
 		// handoff to the next Flixel tick instead of mutating game state directly
