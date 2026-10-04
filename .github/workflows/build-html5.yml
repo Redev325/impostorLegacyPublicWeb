@@ -27,7 +27,11 @@ jobs:
         with:
           haxe-version: 4.3.6
       - name: Install hxpkg
-        run: haxelib install hxpkg --quiet
+        run: |
+          # Install HxPKG directly from its public Git repository so the build
+          # does not depend on the Haxelib package server being healthy.
+          haxelib git hxpkg https://github.com/CCobaltDev/HxPKG.git
+          haxelib list | grep -q '^hxpkg' || (echo 'hxpkg installation failed' && exit 1)
       - name: Install Project Libraries
         run: |
           haxelib run hxpkg setup
