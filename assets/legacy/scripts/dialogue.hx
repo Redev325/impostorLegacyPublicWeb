@@ -247,6 +247,13 @@ function speakerAnims(char:String = 'bf')
 **/
 function refreshDialogue(?oldToo = false)
 {
+	if (dialogueList == null || dialogueList.length == 0)
+	{
+		dialogueEnded = true;
+		goodBialogue();
+		return;
+	}
+	
 	if (oldToo)
 	{
 		if (bubble_old.alpha != 1)
@@ -266,13 +273,54 @@ function refreshDialogue(?oldToo = false)
 	}
 	
 	dialogueEnded = false;
-	var splitName:Array<String> = dialogueList[0].split(":");
-	curCharacter = splitName[1]; // idk
+	
+	// HScript values coming from URLLoader/cached text are Dynamic. Normalize
+	// the entry to a real String before any StringTools/indexOf operation so a
+	// malformed or missing line can never become an undefined JavaScript value.
+	var rawEntry:Dynamic = dialogueList[0];
+	var entry:String = rawEntry == null ? '' : Std.string(rawEntry).trim();
+	
+	while (entry.length == 0 && dialogueList.length > 1)
+	{
+		dialogueList.remove(dialogueList[0]);
+		rawEntry = dialogueList[0];
+		entry = rawEntry == null ? '' : Std.string(rawEntry).trim();
+	}
+	
+	if (entry.length == 0)
+	{
+		dialogueList.resize(0);
+		goodBialogue();
+		return;
+	}
+	
+	var splitName:Array<String> = entry.split(":");
+	if (splitName.length < 3)
+	{
+		// Ignore malformed dialogue entries instead of indexing missing speaker,
+		// emote, or text fields.
+		dialogueList.remove(dialogueList[0]);
+		refreshDialogue(oldToo);
+		return;
+	}
+	
+	curCharacter = Std.string(splitName[1]).trim();
+	if (curCharacter.length == 0) curCharacter = 'bf';
+	
+	curEmote = Std.string(splitName[2]).trim();
+	if (curEmote.length == 0) curEmote = 'neutral';
 	
 	v4SpeakerShit();
-	curEmote = splitName[2]; // emote
-	dialogueList[0] = dialogueList[0].substr(splitName[1].length + 3 + splitName[2].length).trim();
-	var line = StringTools.contains(dialogueList[0], 'dialogue_') ? Lang.str(dialogueList[0]) : dialogueList[0];
+	
+	var textStart:Int = curCharacter.length + 3 + curEmote.length;
+	var dialogueText:String = textStart < entry.length ? entry.substr(textStart).trim() : '';
+	
+	// Preserve localized dialogue keys, but never pass null into StringTools.
+	var localizedLine:Null<String> = StringTools.contains(dialogueText, 'dialogue_')
+		? Lang.str(dialogueText)
+		: dialogueText;
+	var line:String = localizedLine ?? dialogueText;
+	
 	if (rtlMode)
 	{
 		rtlFullText = line;
@@ -544,7 +592,8 @@ public function readDialogue()
 
 function getAtt(ac:String)
 {
-	return (Lang.current?.special != null ? Lang.current?.special.contains(ac) : false);
+	final special:Null<Array<String>> = Lang.current?.special;
+	return special != null && ac != null && special.contains(ac);
 }
 
 function formatArabicDialogueText(source:String):String
