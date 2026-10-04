@@ -245,6 +245,12 @@
 			include="liber.ttf|liberbold.ttf" preload="true" embed="false" if="html5" />
 		<assets path="assets/legacy/fonts" rename="assets/fonts" library="fonts"
 			exclude="vcr.ttf|vcr-srb.ttf" preload="false" embed="false" />
+		<!-- HTML5 dialogue text is tiny but must be synchronously available when a
+			cutscene finishes. Keep dialogue files in their own preloaded library so
+			readDialogue() never depends on a second network request at that moment. -->
+		<assets path="assets/legacy/songs" rename="assets/songs" library="dialogue"
+			include="ashes/dialogue.txt|d'low/dialogue.txt|delusion/dialogue.txt|heartbeat/dialogue.txt|lights-down/dialogue.txt|magmatic/dialogue.txt|mando/dialogue.txt|meltdown/dialogue.txt|oversight/dialogue.txt|pinkwave/dialogue.txt|sabotage/dialogue.txt|sussus-moogus/dialogue.txt|sussus-toogus/dialogue.txt"
+			preload="true" embed="false" if="html5" />
 
 		<library name="default" preload="false" />
 		<library name="title" preload="false" />
@@ -252,6 +258,7 @@
 		<library name="menus" preload="true" />
 		<library name="embedded" preload="false" />
 		<library name="gameplay" preload="true" />
+		<library name="dialogue" preload="true" />
 		<library name="music" preload="false" />
 		<library name="song_armed" preload="false" />
 		<library name="song_ashes" preload="false" />
