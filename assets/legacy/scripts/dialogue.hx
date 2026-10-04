@@ -66,6 +66,18 @@ var dialogueAfter:Bool = false;
 var rtlMode:Bool = false;
 var rtlFullText:String = "";
 
+#if html5
+function addDialogueObject(obj:Dynamic):Void
+{
+	addToState(obj);
+}
+#else
+function addDialogueObject(obj:Dynamic):Void
+{
+	add(obj);
+}
+#end
+
 // dialogue portraits
 var portrait:Array<FlxSprite> = [];
 
@@ -124,7 +136,7 @@ public function videoCutscene(?vid:String = 'sussus-moogus', ?dAfter:Bool, ?canS
 		vidPlaying = false;
 		blackYnot = new FlxSprite().makeScaledGraphic(FlxG.width + 3, FlxG.height, FlxColor.BLACK);
 		blackYnot.camera = camOther;
-		add(blackYnot);
+		addDialogueObject(blackYnot);
 
 		final videoPath:String = FunkinAssets.resolveHtml5VideoPath(vid);
 		dialogueVideo = videoPath;
@@ -150,7 +162,7 @@ public function videoCutscene(?vid:String = 'sussus-moogus', ?dAfter:Bool, ?canS
 	if (!dialogueAfter) PlayState.seenCutscene = true;
 	blackYnot = new FlxSprite().makeScaledGraphic(FlxG.width + 3, FlxG.height, FlxColor.BLACK);
 	blackYnot.camera = camOther;
-	add(blackYnot);
+	addDialogueObject(blackYnot);
 	dialogueVideo = new FunkinVideoSprite();
 	dialogueVideo.onFormat(() -> {
 		vidPlaying = true;
@@ -162,7 +174,7 @@ public function videoCutscene(?vid:String = 'sussus-moogus', ?dAfter:Bool, ?canS
 		camGame.visible = false;
 		textFade();
 	});
-	add(dialogueVideo);
+	addDialogueObject(dialogueVideo);
 	if (onEnd != null) dialogueVideo.onEnd(onEnd);
 	if (onFormat != null) dialogueVideo.onFormat(onFormat);
 	dialogueVideo.onEnd(onVidEnd);
@@ -184,7 +196,7 @@ public function textFade()
 	FlxTween.tween(skipText, {alpha: 0}, 3, {startDelay: 4, ease: FlxEase.sineInOut});
 	
 	skipText.camera = camOther;
-	add(skipText);
+	addDialogueObject(skipText);
 }
 
 /**
@@ -490,14 +502,14 @@ public function readDialogue()
 	bgFade = new FlxSprite(-200, -200).makeScaledGraphic(Std.int(FlxG.width * 1.3), Std.int(FlxG.height * 1.3), 0xFFFFFFFF);
 	bgFade.camera = camHUD;
 	bgFade.alpha = 0;
-	add(bgFade);
+	addDialogueObject(bgFade);
 	
 	FlxTween.tween(bgFade, {alpha: 0.35}, 0.8, {ease: FlxEase.circIn});
 	
 	// Create the box group.
 	boxGroup = new FlxSpriteGroup();
 	boxGroup.camera = camHUD;
-	add(boxGroup);
+	addDialogueObject(boxGroup);
 	
 	// Dialgoue box
 	box = new funkin.objects.RGBSprite(0, 431).loadGraphic(Paths.image('ui/dialogue/dialogueBox'));
