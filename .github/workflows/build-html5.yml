@@ -85,6 +85,15 @@ jobs:
 
           echo "Pinned Haxelib dependencies installed from Git successfully."
           haxelib list
+      - name: Build hxcpp command-line tool
+        run: |
+          set -euo pipefail
+          HXCPP_DIR="$GITHUB_WORKSPACE/.haxelib-sources/hxcpp"
+          test -f "$HXCPP_DIR/tools/hxcpp/compile.hxml"
+          cd "$HXCPP_DIR/tools/hxcpp"
+          haxe compile.hxml
+          test -f "$HXCPP_DIR/hxcpp.n"
+
       - name: Build Lime native tools
         run: |
           set -euo pipefail
