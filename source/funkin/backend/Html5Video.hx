@@ -16,6 +16,7 @@ class Html5Video
 	static var started:Bool = false;
 	static var pauseRequested:Bool = false;
 	static var loadTimeout:Null<Timer> = null;
+	static var endWatchdog:Null<Timer> = null;
 	#end
 
 	public static function play(path:String, onReady:Void->Void, onEnd:Void->Void, onError:Void->Void, ?muted:Bool = false, ?loop:Bool = false):Bool
@@ -136,6 +137,19 @@ class Html5Video
 			// media element consistently when the URL is served from GitHub Pages.
 			try video.load() catch (e:Dynamic) {}
 
+			// Poll the media clock as a final end-of-video fallback. Some browsers
+			// can omit both `ended` and a final `timeupdate` for DOM video.
+			endWatchdog = Timer.repeat(function() {
+				if (currentVideo != video || finished) return;
+				try
+				{
+					final duration:Float = video.duration;
+					if (video.ended || (!Math.isNaN(duration) && duration > 0 && video.currentTime >= duration - 0.05))
+						finish(endCallback);
+				}
+				catch (e:Dynamic) {}
+			}, 100);
+
 			loadTimeout = Timer.delay(function() {
 				if (currentVideo == video && !finished && !started)
 					finish(errorCallback);
@@ -199,8 +213,10 @@ class Html5Video
 				loadTimeout.stop();
 				loadTimeout = null;
 			}
+			stopEndWatchdog();
 
 			cleanupVideo(video);
+			cleanupBackdrop();
 		#end
 	}
 
@@ -268,17 +284,17 @@ class Html5Video
 
 		if (cb != null) cb();
 
-		// Keep the guaranteed-black backdrop over the canvas for the remainder
-		// of this frame, then hand the screen back to Flixel on the next paint.
-		// This removes the white gap that can occur between video teardown and
-		// the first rendered PlayState frame.
-		try
+		// The video is already gone, so there is no reason to retain the black
+		// DOM backdrop. Remove it immediately after the game callback returns.
+		cleanupBackdrop();
+	}
+
+	static function stopEndWatchdog():Void
+	{
+		if (endWatchdog != null)
 		{
-			Browser.window.requestAnimationFrame(function(_) cleanupBackdrop());
-		}
-		catch (e:Dynamic)
-		{
-			Timer.delay(cleanupBackdrop, 16);
+			endWatchdog.stop();
+			endWatchdog = null;
 		}
 	}
 
