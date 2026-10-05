@@ -107,12 +107,16 @@ class Splash extends FlxState
 	function logoFunc()
 	{
 		#if html5
-		// Use the actual Nightmare Vision logo instead of recreating it as plain text.
+		// Use the black Impostor Nightmare Vision logo. Every animation timer is
+		// one-shot so the intro sound plays exactly once and the logo only
+		// transitions forward instead of repeatedly resetting/scaling.
 		logo = new FlxSprite().loadGraphic(Paths.image('branding/UpdogBlack'));
 		logo.screenCenter();
 		logo.visible = false;
+		logo.alpha = 1;
 		add(logo);
-		new FlxTimer().start(0.25, (t:FlxTimer) -> {
+
+		new FlxTimer().start(0.25, (t0:FlxTimer) -> {
 			FlxG.sound.volume = 1;
 			try
 			{
@@ -120,19 +124,21 @@ class Splash extends FlxState
 				else FlxG.sound.play(Paths.sound('intro'));
 			}
 			catch (_) {}
+
 			logo.visible = true;
 			logo.alpha = 1;
 			logo.scale.set(0.2, 1.25);
-			t.reset(0.06125);
+
+			new FlxTimer().start(0.06125, (t1:FlxTimer) -> {
+				logo.scale.set(1.25, 0.5);
+
+				new FlxTimer().start(0.06125, (t2:FlxTimer) -> {
+					logo.scale.set(1.125, 1.125);
+					FlxTween.tween(logo.scale, {x: 1, y: 1}, 0.25, {ease: FlxEase.elasticOut});
+				});
+			});
 		});
-		new FlxTimer().start(0.31125, (t:FlxTimer) -> {
-			logo.scale.set(1.25, 0.5);
-			t.reset(0.06125);
-		});
-		new FlxTimer().start(0.3725, (t:FlxTimer) -> {
-			logo.scale.set(1.125, 1.125);
-			FlxTween.tween(logo.scale, {x: 1, y: 1}, 0.25, {ease: FlxEase.elasticOut});
-		});
+
 		FlxTimer.wait(1.6225, () -> {
 			FlxTween.tween(logo.scale, {x: 0.2, y: 0.2}, 1.5, {ease: FlxEase.quadIn});
 			FlxTween.tween(logo, {alpha: 0}, 1.5, {ease: FlxEase.quadIn});
