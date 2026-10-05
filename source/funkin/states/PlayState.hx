@@ -975,7 +975,7 @@ class PlayState extends MusicBeatState
 		if (html5SussusCutsceneStarted || seenCutscene || !isStoryMode) return;
 		html5SussusCutsceneStarted = true;
 		inCutscene = true;
-		songStartCallback = () -> return Function_Stop;
+		songStartCallback = () -> return ScriptConstants.STOP_FUNC;
 
 		final videoPath:String = 'assets/videos/week1/sussus-moogus.mp4';
 		final finishCutscene:Void->Void = function() {
