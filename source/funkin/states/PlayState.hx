@@ -981,11 +981,15 @@ class PlayState extends MusicBeatState
 		final finishCutscene:Void->Void = function() {
 			new FlxTimer().start(0, function(_) {
 				final dialogueScript:Null<FunkinScript> = scripts.getScript('gameplay:assets/scripts/dialogue.hx');
-				if (dialogueScript != null && dialogueScript.exists('readDialogue'))
+				if (dialogueScript != null && dialogueScript.exists('onVidEnd'))
 				{
 					try
 					{
-						dialogueScript.call('readDialogue', []);
+						// Reuse the dialogue script's normal HTML5 post-video handoff.
+						dialogueScript.set('dialogueAfter', true);
+						dialogueScript.set('vidPlaying', false);
+						dialogueScript.set('dialogueVideo', null);
+						dialogueScript.call('onVidEnd', []);
 						return;
 					}
 					catch (e:Dynamic)
