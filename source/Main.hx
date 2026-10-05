@@ -23,7 +23,7 @@ class Main extends Sprite
 			width: 1280,
 			height: 720,
 			fps: 60,
-			skipSplash: #if (debug || html5) true #else false #end,
+			skipSplash: #if debug true #else false #end,
 			startFullScreen: false,
 			initialState: funkin.states.TitleState
 		};
