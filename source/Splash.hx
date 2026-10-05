@@ -49,7 +49,7 @@ class Splash extends FlxState
 				if (splashComplete) complete();
 			})
 			.onError(function(error) {
-				Logger.log('Failed to load HTML5 title asset library before title state: ' + Std.string(error), WARN);
+				trace('Failed to load HTML5 title asset library before title state: ' + Std.string(error));
 				titleLibraryReady = true;
 				if (splashComplete) complete();
 			});
