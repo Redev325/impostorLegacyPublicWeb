@@ -247,7 +247,8 @@ class PlayState extends MusicBeatState
 	 */
 	public var audio:PlayableSong;
 	
-	public var notes:FlxTypedGroup<Note>;	public var queueNotes:Array<QueueNote> = [];
+	public var notes:FlxTypedGroup<Note>;
+	public var queueNotes:Array<QueueNote> = [];
 	public var eventNotes:Array<EventNote> = [];
 	
 	/**
@@ -496,7 +497,8 @@ class PlayState extends MusicBeatState
 	 * Group of event scripts. these have some special functions for their use
 	 */
 	public var eventScripts:ScriptGroup;
-		public var arrowSkins:Array<String> = [];
+	
+	public var arrowSkins:Array<String> = [];
 	
 	// ????
 	public var script_NOTEOffsets:Vector<FlxPoint>;
@@ -745,7 +747,8 @@ class PlayState extends MusicBeatState
 		if (allowPet)
 		{
 			pet.loadPet(ClientPrefs.equipment.get('pet'));
-			checkStageFlag(pet);			startPetScript(pet);
+			checkStageFlag(pet);
+			startPetScript(pet);
 		}
 		
 		if (!stage.stageData.hide_girlfriend)
@@ -994,7 +997,8 @@ class PlayState extends MusicBeatState
 	function startPetScript(pet:Pet):Void
 	{
 		final name:String = pet.curPet;
-				var hscriptPath = FunkinScript.getPath('data/pets/$name', LOOSE);
+		
+		var hscriptPath = FunkinScript.getPath('data/pets/$name', LOOSE);
 		if (!FunkinAssets.exists(hscriptPath, TEXT)) hscriptPath = FunkinScript.getPath('pets/$name', LOOSE);
 		
 		if (FunkinAssets.exists(hscriptPath, TEXT))
@@ -1243,7 +1247,8 @@ class PlayState extends MusicBeatState
 	public var countdownGo:Null<FlxSprite> = null;
 	
 	#if html5
-	var waitingForAudio:Bool = false;	#end
+	var waitingForAudio:Bool = false;
+	#end
 	
 	public function startCountdown():Void
 	{
@@ -1492,7 +1497,8 @@ class PlayState extends MusicBeatState
 		{
 			final parsedEvents:Dynamic = FunkinAssets.parseJson(cachedEvents);
 			if (parsedEvents != null)
-			{				final eventSong:Song = Chart.fromData(parsedEvents);
+			{
+				final eventSong:Song = Chart.fromData(parsedEvents);
 				for (event in eventSong.events)
 				{
 					for (i in 0...event[1].length)
@@ -1741,7 +1747,8 @@ class PlayState extends MusicBeatState
 			}
 			
 			event.strumTime -= eventNoteEarlyTrigger(event);
-			eventNotes.push(event);			eventPushed(event);
+			eventNotes.push(event);
+			eventPushed(event);
 		}
 		
 		eventNotes.sort(function(a:EventNote, b:EventNote) return (a.strumTime > b.strumTime ? 1 : -1));
@@ -1990,7 +1997,8 @@ class PlayState extends MusicBeatState
 			final lerpRate = 0.04 * cameraSpeed;
 			FlxG.camera.followLerp = lerpRate;
 		}
-				if (generatedMusic && !endingSong && !isCameraOnForcedPos) moveCameraSection();
+		
+		if (generatedMusic && !endingSong && !isCameraOnForcedPos) moveCameraSection();
 		
 		// Allow the pause control to work as soon as gameplay state is visible.
 		// The HTML5 song stream may still be buffering before the countdown starts,
@@ -2239,7 +2247,8 @@ class PlayState extends MusicBeatState
 				cpuControlled = !cpuControlled;
 				botplayTxt.visible = !botplayTxt.visible;
 			}
-		}		
+		}
+		
 		scripts.call('onUpdatePost', [elapsed]);
 	}
 	
@@ -2488,7 +2497,8 @@ class PlayState extends MusicBeatState
 					else if (gf != null)
 					{
 						gf.playAnimForDuration('cheer', time);
-						gf.specialAnim = true;					}
+						gf.specialAnim = true;
+					}
 				}
 				if (value != 1)
 				{
@@ -2737,7 +2747,8 @@ class PlayState extends MusicBeatState
 				else shakeTime = false;
 				
 				var split2:Array<String> = value2.split(',');
-				var toBeat:Int = Std.parseInt(split2[0].trim());				var tiBeat:Float = Std.parseFloat(split2[1].trim());
+				var toBeat:Int = Std.parseInt(split2[0].trim());
+				var tiBeat:Float = Std.parseFloat(split2[1].trim());
 				
 				if (Math.isNaN(toBeat)) toBeat = 4;
 				if (Math.isNaN(tiBeat)) tiBeat = 1;
@@ -2986,7 +2997,8 @@ class PlayState extends MusicBeatState
 					
 					popUpQueued++;
 					popup.onFinish = dequeuePopup;
-										popUpEndCallback = function() {
+					
+					popUpEndCallback = function() {
 						removeModifiers();
 						
 						if (WeekData.weeksList[storyMeta.curWeek] != null)
@@ -3235,7 +3247,8 @@ class PlayState extends MusicBeatState
 					if (higherPriority || (!higherPriority && note.strumTime < topNote.strumTime)) topNote = note;
 				}
 				
-				if (topNote != null)				{
+				if (topNote != null)
+				{
 					field.onNoteHit.dispatch(topNote, field);
 					
 					ghostTapped = false;
@@ -3484,7 +3497,8 @@ class PlayState extends MusicBeatState
 	
 	override function sectionHit():Void
 	{
-		if (SONG.notes[curSection] != null)		{
+		if (SONG.notes[curSection] != null)
+		{
 			if (SONG.notes[curSection].changeBPM)
 			{
 				Conductor.bpm = SONG.notes[curSection].bpm;
