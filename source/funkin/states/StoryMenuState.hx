@@ -305,6 +305,7 @@ class StoryMenuState extends AmongUIState
 		PlayState.storyMeta.score = 0;
 		PlayState.isStoryMode = true;
 		PlayState.chartingMode = false;
+		PlayState.seenCutscene = false;
 		
 		WeekData.setDirectoryFromWeek(week);
 		
