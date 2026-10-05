@@ -51,17 +51,14 @@ You may change this anytime in the Options menu.
 			}
 			else
 			{
-				#if html5
-				// On HTML5, leave the warning immediately. The title screen handles
-				// its own visuals, so the warning transition cannot leave a black frame.
-				switchToTitle();
-				#else
+				// Keep the full warning transition on HTML5 too. The previous web-only
+				// shortcut switched to the title immediately, cutting off the warning's
+				// final animation and making it look like it never finished.
 				FlxFlicker.flicker(warnText, 1, 0.1, false, true, function(flk:FlxFlicker) {
 					new FlxTimer().start(0.5, function(tmr:FlxTimer) {
 						switchToTitle();
 					});
 				});
-				#end
 			}
 			
 			leftState = true;
