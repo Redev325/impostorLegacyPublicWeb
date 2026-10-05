@@ -28,11 +28,32 @@ class Splash extends FlxState
 	var canSkip:Bool = true;
 	
 	var initialTimer:Null<FlxTimer> = null;
+	var finishing:Bool = false;
+#if html5
+	var titleLibraryReady:Bool = false;
+	var splashComplete:Bool = false;
+#end
 	
 	override function create()
 	{
 		_cachedAutoPause = FlxG.autoPause;
 		FlxG.autoPause = false;
+
+#if html5
+		// Show the Nightmare Vision splash immediately after the browser preloader.
+		// Load the title library in parallel so a slow title-asset request cannot
+		// prevent the splash from appearing first.
+		openfl.Assets.loadLibrary('title')
+			.onComplete(function(_) {
+				titleLibraryReady = true;
+				if (splashComplete) complete();
+			})
+			.onError(function(error) {
+				Logger.log('Failed to load HTML5 title asset library before title state: ' + Std.string(error), WARN);
+				titleLibraryReady = true;
+				if (splashComplete) complete();
+			});
+#end
 		
 		#if VIDEOS_ALLOWED
 		var canPlayVid:Bool = false;
@@ -143,11 +164,18 @@ class Splash extends FlxState
 	function finish()
 	{
 		initialTimer?.cancel();
+		if (finishing) return;
+#if html5
+		splashComplete = true;
+		if (!titleLibraryReady) return;
+#end
 		complete();
 	}
 	
 	function complete()
 	{
+		if (finishing) return;
+		finishing = true;
 		FlxG.autoPause = _cachedAutoPause;
 		FlxG.switchState(() -> Type.createInstance(Main.startMeta.initialState, []));
 	}
