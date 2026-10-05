@@ -101,7 +101,7 @@ class Splash extends FlxState
 	{
 		#if html5
 		// Use the actual Nightmare Vision logo instead of recreating it as plain text.
-		logo = new FlxSprite().loadGraphic(Paths.image('branding/NMV'));
+		logo = new FlxSprite().loadGraphic(Paths.image('branding/UpdogBlack'));
 		logo.screenCenter();
 		logo.visible = false;
 		add(logo);
