@@ -236,7 +236,7 @@ jobs:
           init_new=init_text.replace('DiscordClient.check();','// Discord RPC disabled for HTML5')
           if init_new != init_text: init_path.write_text(init_new)
           edit('source/funkin/utils/CoolUtil.hx',lambda s:s.replace('FlxG.error("Platform is not supported for CoolUtil.openFolder");','trace("Platform is not supported for CoolUtil.openFolder");'))
-          edit('source/Splash.hx',lambda s:re.sub(r'(?s)(\tfunction logoFunc\(\)\n\t\{).*?(\n\t\}\n)',r'\1\n\t\tfinish();\n\t\2',s,count=1))
+          # Splash.hx contains the HTML5 Nightmare Vision startup flow; do not overwrite it here.
           edit('source/funkin/objects/menu/CosmicubeNode.hx',lambda s:re.sub(r'(?s)(inline function hasUpdogSaveData\(\):Bool\n\t\{).*?(\n\t\}\n)',r'\1\n\t\treturn false;\n\t\2',s,count=1))
           PY
       - name: Verify Cosmicube HTML5 implementation was preserved
