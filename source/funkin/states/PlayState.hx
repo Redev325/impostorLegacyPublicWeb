@@ -48,6 +48,9 @@ import funkin.game.marathon.*;
 import funkin.objects.menu.AwardPopup;
 import funkin.objects.menu.BeansPopup;
 import funkin.audio.SyncedFlxSoundGroup;
+#if html5
+import funkin.backend.Html5Video;
+#end
 #if VIDEOS_ALLOWED
 import funkin.video.FunkinVideoSprite;
 #end
@@ -857,6 +860,14 @@ class PlayState extends MusicBeatState
 		addSongScripts('songs/${Paths.sanitize(SONG.song)}/scripts/');
 		#end
 
+		#if html5
+		// Start Sussus Moogus directly from the native HTML5 video path. This
+		// bypasses the asynchronous song-script dispatch, which can lose the
+		// intro before PlayState has finished creating.
+		if (Paths.sanitize(SONG.song) == 'sussus-moogus' && isStoryMode && !seenCutscene)
+			startHtml5SussusMoogusCutscene();
+		#end
+
 		scripts.call('preNoteGeneration', []);
 		
 		if (genNotesBeforeCountdown) generatePlayfields();
@@ -947,13 +958,6 @@ class PlayState extends MusicBeatState
 		
 		scripts.call('onCreatePost', []);
 
-		#if html5
-		// Start the Sussus Moogus Story Mode intro only after onCreatePost so the
-		// dialogue script has created skipText before the video's onReady callback.
-		if (Paths.sanitize(SONG.song) == 'sussus-moogus' && isStoryMode && !seenCutscene && !inCutscene)
-			scripts.call('videoCutscene', ['week1/sussus-moogus', true]);
-		#end
-		
 		callHUDFunc(hud -> hud.cachePopUpScore());
 		
 		super.create();
@@ -963,6 +967,46 @@ class PlayState extends MusicBeatState
 		refreshZ(stage);
 	}
 	
+	#if html5
+	var html5SussusCutsceneStarted:Bool = false;
+
+	function startHtml5SussusMoogusCutscene():Void
+	{
+		if (html5SussusCutsceneStarted || seenCutscene || !isStoryMode) return;
+		html5SussusCutsceneStarted = true;
+		inCutscene = true;
+		songStartCallback = () -> return Function_Stop;
+
+		final videoPath:String = 'assets/videos/week1/sussus-moogus.mp4';
+		final finishCutscene:Void->Void = function() {
+			new FlxTimer().start(0, function(_) {
+				final dialogueScript:Null<FunkinScript> = scripts.getScript('gameplay:assets/scripts/dialogue.hx');
+				if (dialogueScript != null && dialogueScript.exists('readDialogue'))
+				{
+					try
+					{
+						dialogueScript.call('readDialogue', []);
+						return;
+					}
+					catch (e:Dynamic)
+					{
+						trace('HTML5 Sussus Moogus dialogue handoff error: ' + e);
+					}
+				}
+
+				inCutscene = false;
+				startCountdown();
+			});
+		};
+
+		if (!Html5Video.play(videoPath, function() {}, finishCutscene, finishCutscene))
+		{
+			inCutscene = false;
+			startCountdown();
+		}
+	}
+	#end
+
 	function set_songSpeed(value:Float):Float
 	{
 		songSpeed = value;
