@@ -30,6 +30,9 @@ class Splash extends FlxState
 	var initialTimer:Null<FlxTimer> = null;
 	var finishing:Bool = false;
 #if html5
+	var introSound:Null<openfl.media.Sound> = null;
+#end
+#if html5
 	var titleLibraryReady:Bool = false;
 	var splashComplete:Bool = false;
 #end
@@ -43,6 +46,10 @@ class Splash extends FlxState
 		// Show the Nightmare Vision splash immediately after the browser preloader.
 		// Load the title library in parallel so a slow title-asset request cannot
 		// prevent the splash from appearing first.
+		FunkinAssets.loadHtml5SoundObject('embedded:assets/sounds/intro.ogg', ['assets/sounds/intro.ogg', 'embedded:assets/sounds/intro.ogg'], function(sound) {
+			introSound = sound;
+		});
+
 		openfl.Assets.loadLibrary('title')
 			.onComplete(function(_) {
 				titleLibraryReady = true;
@@ -107,7 +114,12 @@ class Splash extends FlxState
 		add(logo);
 		new FlxTimer().start(0.25, (t:FlxTimer) -> {
 			FlxG.sound.volume = 1;
-			try FlxG.sound.play(Paths.sound('intro')) catch (_) {}
+			try
+			{
+				if (introSound != null) FlxG.sound.play(introSound);
+				else FlxG.sound.play(Paths.sound('intro'));
+			}
+			catch (_) {}
 			logo.visible = true;
 			logo.alpha = 1;
 			logo.scale.set(0.2, 1.25);
