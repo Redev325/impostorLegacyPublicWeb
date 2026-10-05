@@ -140,9 +140,14 @@ class Splash extends FlxState
 		});
 
 		FlxTimer.wait(1.6225, () -> {
+			// Wait for the entire 1.5s shrink/fade to actually finish before
+			// allowing the splash to leave. The old code started a separate
+			// 0.8s timer immediately, cutting the fade short by 0.7s.
 			FlxTween.tween(logo.scale, {x: 0.2, y: 0.2}, 1.5, {ease: FlxEase.quadIn});
-			FlxTween.tween(logo, {alpha: 0}, 1.5, {ease: FlxEase.quadIn});
-			FlxTimer.wait(0.8, finish);
+			FlxTween.tween(logo, {alpha: 0}, 1.5, {
+				ease: FlxEase.quadIn,
+				onComplete: (_) -> FlxTimer.wait(0.8, finish)
+			});
 		});
 
 		#else
