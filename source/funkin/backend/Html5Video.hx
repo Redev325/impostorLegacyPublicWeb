@@ -136,6 +136,10 @@ class Html5Video
 			// Explicitly start loading after insertion so browsers initialize the
 			// media element consistently when the URL is served from GitHub Pages.
 			try video.load() catch (e:Dynamic) {}
+			// Request playback immediately as well as from loadeddata/canplay.
+			// This preserves a user-gesture activation when the cutscene was started
+			// directly from a Story Mode selection before the network finishes loading.
+			requestPlay();
 
 			// Poll the media clock as a final end-of-video fallback. Some browsers
 			// can omit both `ended` and a final `timeupdate` for DOM video.

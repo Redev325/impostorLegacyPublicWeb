@@ -65,6 +65,7 @@ var vidPlaying:Bool = false;
 var dialogueAfter:Bool = false;
 var rtlMode:Bool = false;
 var rtlFullText:String = "";
+var html5VideoCutsceneQueued:Bool = false;
 
 #if html5
 function addDialogueObject(obj:Dynamic):Void
@@ -138,8 +139,22 @@ public function videoCutscene(?vid:String = 'sussus-moogus', ?dAfter:Bool, ?canS
 {
 	if (IS_HTML5)
 	{
-		// The HTML5 PlayState starts the Sussus Moogus intro directly, and the
-		// song script may request the same intro afterward. Ignore that duplicate.
+		// Song script onLoad() can run before onCreatePost() has created skipText.
+		// Defer the request one Flixel tick so the dialogue UI is initialized
+		// before Html5Video's onReady callback calls textFade().
+		if (skipText == null)
+		{
+			if (html5VideoCutsceneQueued) return;
+			html5VideoCutsceneQueued = true;
+			new FlxTimer().start(0, function(_) {
+				html5VideoCutsceneQueued = false;
+				videoCutscene(vid, dAfter, canSkip, onEnd, onFormat);
+			});
+			return;
+		}
+
+		// The HTML5 PlayState can also request the Sussus Moogus intro directly.
+		// Ignore that duplicate once a video has actually started or is queued.
 		if (dialogueVideo != null || vidPlaying) return;
 		if ((videoCheckStory && !isStoryMode) || PlayState.seenCutscene)
 		{

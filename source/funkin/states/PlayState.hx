@@ -857,18 +857,6 @@ class PlayState extends MusicBeatState
 		addSongScripts('songs/${Paths.sanitize(SONG.song)}/scripts/');
 		#end
 
-		#if html5
-		// Sussus Moogus has a required Story Mode intro video. Its legacy song
-		// script normally starts it from onLoad(), but keep a direct HTML5 fallback
-		// here so the cutscene cannot disappear if that callback is skipped or the
-		// browser loads the song script late. The videoCutscene helper itself
-		// prevents duplicates when the normal script already started it.
-		if (Paths.sanitize(SONG.song) == 'sussus-moogus' && isStoryMode && !seenCutscene && !inCutscene)
-		{
-			scripts.call('videoCutscene', ['week1/sussus-moogus', true]);
-		}
-		#end
-		
 		scripts.call('preNoteGeneration', []);
 		
 		if (genNotesBeforeCountdown) generatePlayfields();
@@ -958,6 +946,13 @@ class PlayState extends MusicBeatState
 		Conductor.safeZoneOffset = (ClientPrefs.safeFrames / 60) * 1000;
 		
 		scripts.call('onCreatePost', []);
+
+		#if html5
+		// Start the Sussus Moogus Story Mode intro only after onCreatePost so the
+		// dialogue script has created skipText before the video's onReady callback.
+		if (Paths.sanitize(SONG.song) == 'sussus-moogus' && isStoryMode && !seenCutscene && !inCutscene)
+			scripts.call('videoCutscene', ['week1/sussus-moogus', true]);
+		#end
 		
 		callHUDFunc(hud -> hud.cachePopUpScore());
 		
