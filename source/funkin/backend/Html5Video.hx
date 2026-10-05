@@ -51,6 +51,8 @@ class Html5Video
 			pauseRequested = false;
 
 			video.preload = 'auto';
+			// Allow the browser to begin the media load without requiring an
+			// additional network response before the first play() attempt.
 			video.autoplay = false;
 			video.controls = false;
 			video.loop = loop;
@@ -86,11 +88,25 @@ class Html5Video
 				if (onReady != null) onReady();
 			};
 
+			// Browsers commonly reject audible HTML5 video when it is started after
+			// the Story Mode asset-loading callbacks have finished because the original
+			// click no longer counts as an active user gesture. Start muted as a
+			// fallback so the actual cutscene can still begin, then unmute it as soon
+			// as the browser has accepted playback.
+			var autoplayMuted:Bool = muted;
+			var audiblePlaybackRequested:Bool = !muted;
+
 			final requestPlay:Void->Void = function() {
 				if (currentVideo != video || finished || pauseRequested) return;
 
 				try
 				{
+					if (!autoplayMuted && !audiblePlaybackRequested)
+					{
+						video.muted = true;
+						autoplayMuted = true;
+					}
+
 					final result:Dynamic = untyped video.play();
 					if (result != null)
 					{
@@ -98,14 +114,54 @@ class Html5Video
 						if (catchFunction != null)
 						{
 							Reflect.callMethod(result, catchFunction, [function(_) {
-								if (!started) finish(errorCallback);
+								if (!started && !autoplayMuted)
+								{
+									autoplayMuted = true;
+									audiblePlaybackRequested = false;
+									try
+									{
+										video.muted = true;
+										final retry:Dynamic = untyped video.play();
+										if (retry != null)
+										{
+											final retryCatch:Dynamic = Reflect.field(retry, 'catch');
+											if (retryCatch != null)
+												Reflect.callMethod(retry, retryCatch, [function(_) if (!started) finish(errorCallback)]);
+										}
+									}
+									catch (e2:Dynamic)
+									{
+										if (!started) finish(errorCallback);
+									}
+								}
+								else if (!started)
+								{
+									finish(errorCallback);
+								}
 							}]);
 						}
 					}
 				}
 				catch (e:Dynamic)
 				{
-					if (!started) finish(errorCallback);
+					if (!started && !autoplayMuted)
+					{
+						autoplayMuted = true;
+						audiblePlaybackRequested = false;
+						try
+						{
+							video.muted = true;
+							untyped video.play();
+						}
+						catch (e2:Dynamic)
+						{
+							if (!started) finish(errorCallback);
+						}
+					}
+					else if (!started)
+					{
+						finish(errorCallback);
+					}
 				}
 			};
 
@@ -116,8 +172,18 @@ class Html5Video
 				revealVideo();
 				requestPlay();
 			};
+			video.onloadedmetadata = function(_) requestPlay();
 			video.oncanplay = function(_) requestPlay();
 			video.onplay = function(_) {
+				// Once the browser has accepted muted autoplay, make the game video
+				// audible again. This keeps the original cutscene soundtrack while
+				// avoiding the autoplay-policy rejection that prevented the video
+				// from appearing at all.
+				if (!muted && autoplayMuted)
+				{
+					try video.muted = false catch (e:Dynamic) {}
+				}
+				audiblePlaybackRequested = !muted;
 				markStarted();
 				revealVideo();
 			};
