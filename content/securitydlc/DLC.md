@@ -29,7 +29,7 @@ The DLC is an example mod made for VS. Impostor Legacy. For a grounded guide to 
 # CHANGELOG
 Current version: **1.1.2**
 
-## 1.1.2b (? 2026)
+## 1.1.3 (? 2026)
 
 ### Changes
 - Fixed health bar color not changing during a section in Don't Lied.
@@ -37,6 +37,8 @@ Current version: **1.1.2**
 - Weird BF given a windy variant.
 - Weird BF stabbed and scared animations fixed.
 - A couple charts were fixed. (GitHub contribution)
+- Crew GF was given a Weird variant. (GitHub contribution)
+- Both Crew BF and Crew GF were given a Weird Sheriff variant. (GitHub contribution)
 
 ## 1.1.2 (july 23 2026)
 
