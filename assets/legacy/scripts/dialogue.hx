@@ -94,7 +94,16 @@ function onCreatePost()
 
 function onVidEnd()
 {
-	hideCaption();
+	// Caption helpers are shared across HScript files. A missing/unavailable
+	// helper must never abort the video-to-dialogue handoff on HTML5.
+	try
+	{
+		hideCaption();
+	}
+	catch (e:Dynamic)
+	{
+		trace('HTML5 caption cleanup skipped: ' + e);
+	}
 	vidPlaying = false;
 	if (IS_HTML5)
 	{
@@ -113,13 +122,24 @@ function onVidEnd()
 			try
 			{
 				if (dialogueAfter && (PlayState.isStoryMode || !videoCheckStory))
+				{
+					// The first HTML5 Story Mode intro is launched directly from
+					// PlayState. Clear any stale flag before the dialogue guard runs;
+					// readDialogue() will set it again once it starts successfully.
+					if (PlayState.isStoryMode && Paths.sanitize(PlayState.SONG?.song ?? '') == 'sussus-moogus')
+						PlayState.seenCutscene = false;
 					readDialogue();
+				}
 				else
 					startCountdown();
 			}
 			catch (e:Dynamic)
 			{
 				trace('HTML5 post-cutscene handoff error: ' + e);
+				inCutscene = false;
+				// Don't leave the initial no-op callback installed if dialogue
+				// cannot be built: the song must still be allowed to start.
+				PlayState.instance.songStartCallback = PlayState.instance.startCountdown;
 				try startCountdown() catch (fallback:Dynamic) trace('HTML5 countdown fallback error: ' + fallback);
 			}
 		});
