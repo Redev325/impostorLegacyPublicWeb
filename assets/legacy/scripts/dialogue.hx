@@ -578,19 +578,25 @@ public function readDialogue()
 	{
 		var dialogueMusic:Null<Dynamic> = null;
 		#if html5
-		final dialogueMusicPath:String = 'assets/music/dialogue/' + safeSong + '.ogg';
-		dialogueMusic = FunkinAssets.getSoundUnsafe(dialogueMusicPath);
-		#else
-		dialogueMusic = Paths.music('dialogue/' + safeSong);
-		#end
-		#if html5
-		if (dialogueMusic != null)
+		// A missing or temporarily unavailable dialogue track must not abort
+		// readDialogue() before the dialogue UI is created.
+		try
 		{
-			// Use the audio frontend's volume argument instead of HScript property
-			// reflection on FlxSound.volume, which is unreliable on JavaScript.
-			funkin.audio.FunkinSound.playMusic(dialogueMusic, 0.8);
+			final dialogueMusicPath:String = 'assets/music/dialogue/' + safeSong + '.ogg';
+			dialogueMusic = FunkinAssets.getSoundUnsafe(dialogueMusicPath);
+			if (dialogueMusic != null)
+			{
+				// Use the audio frontend's volume argument instead of HScript property
+				// reflection on FlxSound.volume, which is unreliable on JavaScript.
+				funkin.audio.FunkinSound.playMusic(dialogueMusic, 0.8);
+			}
+		}
+		catch (e:Dynamic)
+		{
+			trace('HTML5 dialogue music could not start; continuing without it: ' + e);
 		}
 		#else
+		dialogueMusic = Paths.music('dialogue/' + safeSong);
 		if (dialogueMusic != null) FlxG.sound.playMusic(dialogueMusic);
 		FlxG.sound.music.volume = 0;
 		FlxTween.tween(FlxG.sound.music, {volume: 0.8}, 1);
