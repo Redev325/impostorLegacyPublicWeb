@@ -989,6 +989,14 @@ class PlayState extends MusicBeatState
 						dialogueScript.set('dialogueAfter', true);
 						dialogueScript.set('vidPlaying', false);
 						dialogueScript.set('dialogueVideo', null);
+
+						// Only this code path starts the first-song video directly.
+						// Ensure the post-video dialogue guard cannot mistake it for
+						// an already-seen cutscene and skip straight to a silent state.
+						seenCutscene = false;
+						camGame.visible = true;
+						camHUD.visible = true;
+						camOther.visible = true;
 						dialogueScript.call('onVidEnd', []);
 						return;
 					}
@@ -999,6 +1007,9 @@ class PlayState extends MusicBeatState
 				}
 
 				inCutscene = false;
+				// Restore the normal song-start callback before using the fallback.
+				// The intro temporarily replaces it with a no-op while the video runs.
+				songStartCallback = startCountdown;
 				startCountdown();
 			});
 		};
