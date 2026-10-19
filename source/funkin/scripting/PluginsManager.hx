@@ -28,10 +28,18 @@ class PluginsManager
 			{
 				final scriptName = file.withoutDirectory().withoutExtension();
 				
-				var script = FunkinScript.fromFile(file, scriptName, loadedScripts.scriptShareables);
+				final script:Null<FunkinScript> = FunkinScript.fromFile(file, scriptName, loadedScripts.scriptShareables);
+				// fromFile may return null when a plugin can't be parsed or initialized.
+				// Skip that plugin instead of dereferencing a nullable script in HTML5.
+				if (script == null)
+				{
+					trace('Skipping plugin script because it could not be loaded: ' + file);
+					continue;
+				}
+				
 				if (script.__garbage)
 				{
-					script = FlxDestroyUtil.destroy(script);
+					FlxDestroyUtil.destroy(script);
 					continue;
 				}
 				
