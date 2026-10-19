@@ -4,6 +4,7 @@ import extensions.hscript.Sharables;
 import extensions.hscript.InterpEx;
 #if html5
 import funkin.states.PlayState;
+import funkin.FunkinAssets;
 #end
 
 import flixel.util.FlxDestroyUtil;
@@ -106,8 +107,25 @@ class ScriptGroup implements IFlxDestroyable
 				if (!FunkinScript.isEscapedScriptReturn(e))
 				{
 					final context:String = 'Script runtime exception in "' + i.name + '" during "' + event + '": ' + Std.string(e);
-#if html5
+					#if html5
 					PlayState.recordHtml5Diagnostic(context);
+					@:privateAccess
+					final scriptInterp:Null<InterpEx> = cast i.interp;
+					final sourcePos = scriptInterp != null ? scriptInterp.posInfos() : null;
+					if (sourcePos != null)
+					{
+						PlayState.recordHtml5Diagnostic('SOURCE LOCATION: ' + sourcePos.fileName + ':' + sourcePos.lineNumber);
+						if (sourcePos.lineNumber > 0)
+						{
+							var sourceText:String = '';
+							try sourceText = FunkinAssets.getContent(i.name) catch (sourceError:Dynamic) {}
+							if (sourceText.length == 0)
+								try sourceText = FunkinAssets.getContent(sourcePos.fileName) catch (sourceError:Dynamic) {}
+							final sourceLines:Array<String> = sourceText.split("\n");
+							if (sourcePos.lineNumber <= sourceLines.length)
+								PlayState.recordHtml5Diagnostic('SOURCE CODE: ' + sourcePos.fileName + ':' + sourcePos.lineNumber + ' => ' + StringTools.trim(sourceLines[sourcePos.lineNumber - 1]));
+						}
+					}
 					#end
 					Logger.log(context, ERROR, false);
 					throw context;

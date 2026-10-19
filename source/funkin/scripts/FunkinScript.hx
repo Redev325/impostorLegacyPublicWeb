@@ -142,6 +142,8 @@ class FunkinScript extends IrisEx implements IFlxDestroyable
 	 * is true if parsing failed
 	 */
 	@:noCompletion public var __garbage:Bool = false;
+	/** Last parser/constructor exception retained for freeze reports. */
+	public var lastErrorMessage:String = "";
 	
 	public var modFolder:Null<String>;
 	
@@ -183,6 +185,7 @@ class FunkinScript extends IrisEx implements IFlxDestroyable
 		catch (e)
 		{
 			__garbage = true;
+			lastErrorMessage = Std.string(e);
 			Logger.log('[${name}]: PARSING ERROR: $e', ERROR, false);
 		}
 		return ret;

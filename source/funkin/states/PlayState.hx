@@ -18,6 +18,7 @@ import flixel.util.FlxColor;
 import flixel.util.FlxSort;
 import flixel.util.FlxTimer;
 import flixel.text.FlxText;
+import flixel.ui.FlxButton;
 import flixel.group.FlxSpriteGroup;
 import flixel.input.keyboard.FlxKey;
 import flixel.util.helpers.FlxBounds;
@@ -49,6 +50,7 @@ import funkin.objects.menu.AwardPopup;
 import funkin.objects.menu.BeansPopup;
 import funkin.audio.SyncedFlxSoundGroup;
 #if html5
+import js.Browser;
 import funkin.backend.Html5Video;
 #end
 #if VIDEOS_ALLOWED
@@ -726,6 +728,25 @@ class PlayState extends MusicBeatState
 			if (!FunkinScript.isHxFile(file) || !legacyGlobalScripts.contains(file)) continue;
 			initFunkinScript('gameplay:assets/scripts/' + file);
 		}
+
+		// Do not rely solely on Assets.list()/readDirectory() for this critical
+		// HTML5 script. Explicitly register it if enumeration omitted it.
+		final expectedDialogueScript:String = 'gameplay:assets/scripts/dialogue.hx';
+		if (!scripts.exists(expectedDialogueScript))
+		{
+			if (FunkinAssets.exists(expectedDialogueScript, TEXT))
+			{
+				final loadedDialogue:Null<FunkinScript> = initFunkinScript(expectedDialogueScript, expectedDialogueScript);
+				if (loadedDialogue == null)
+					PlayState.recordHtml5Diagnostic('Explicit dialogue script registration failed: ' + expectedDialogueScript);
+			}
+			else
+			{
+				PlayState.recordHtml5Diagnostic('Dialogue script asset was not found in the gameplay library: ' + expectedDialogueScript);
+			}
+		}
+		if (!scripts.exists(expectedDialogueScript))
+			PlayState.recordHtml5Diagnostic('Dialogue script is still not registered after explicit HTML5 load attempt: ' + expectedDialogueScript);
 		#else
 		for (file in Paths.listAllFilesInDirectory('scripts', LOOSE).filter(path -> FunkinScript.isHxFile(path)))
 		{
@@ -1072,7 +1093,9 @@ class PlayState extends MusicBeatState
 
 	#if html5
 	var html5DiagnosticVisible:Bool = false;
-	var html5DiagnosticObjects:Array<FlxSprite> = [];
+	var html5DiagnosticObjects:Array<FlxBasic> = [];
+	var html5DiagnosticReason:String = '';
+	var html5DiagnosticCopyStatus:Null<FlxText> = null;
 
 	function addHtml5DiagnosticSprite(sprite:FlxSprite):Void
 	{
@@ -1096,6 +1119,7 @@ class PlayState extends MusicBeatState
 	public function showHtml5FreezeDiagnostics(reason:String):Void
 	{
 		if (html5DiagnosticVisible) return;
+		html5DiagnosticReason = reason;
 		html5DiagnosticVisible = true;
 		camGame.visible = false;
 		camHUD.visible = false;
@@ -1127,23 +1151,109 @@ class PlayState extends MusicBeatState
 		addHtml5DiagnosticSprite(title);
 
 		var lines:Array<String> = [];
-		lines.push('Freeze detected: ' + shortenHtml5Diagnostic(reason, 70));
-		lines.push('Captured errors:');
-		final messageStart:Int = Std.int(Math.max(0, html5DiagnosticMessages.length - 12));
+		lines.push('Freeze detected: ' + shortenHtml5Diagnostic(reason, 90));
+		lines.push('Captured errors / load failures:');
+		final messageStart:Int = Std.int(Math.max(0, html5DiagnosticMessages.length - 8));
 		if (html5DiagnosticMessages.length == 0)
 			lines.push(' - No runtime exception was captured before the timeout.');
 		else
 		{
 			for (i in messageStart...html5DiagnosticMessages.length)
-				lines.push(' - ' + shortenHtml5Diagnostic(html5DiagnosticMessages[i], 69));
+				lines.push(' - ' + shortenHtml5Diagnostic(html5DiagnosticMessages[i], 96));
 		}
-		lines.push('Possible causes: dialogue HScript exception, missing dialogue/character assets,');
-		lines.push('or an HTML5 video/audio callback or network request that stalled.');
-		lines.push('Press ENTER or ESC to dismiss this screen and continue.');
+		lines.push('Failing check: PlayState could not find the registered dialogue script.');
+		lines.push("Lookup: scripts.getScript('gameplay:assets/scripts/dialogue.hx')");
+		lines.push('Source: source/funkin/states/PlayState.hx, startHtml5SussusMoogusCutscene()');
+		lines.push('Loader/parse errors and source lines appear here when captured.');
+		lines.push('Press C or click COPY REPORT to copy all details. ENTER / ESC continues.');
 
 		final details:FlxText = new FlxText(9, 55, panelWidth - 18, lines.join("\n"), 12);
 		details.setFormat(Paths.DEFAULT_FONT, 12, FlxColor.RED, LEFT);
 		addHtml5DiagnosticSprite(details);
+
+		final copyButton:FlxButton = new FlxButton(9, panelHeight - 35, 'COPY REPORT', copyHtml5FreezeReport);
+		copyButton.cameras = [camOther];
+		copyButton.scrollFactor.set();
+		copyButton.label.setFormat(Paths.DEFAULT_FONT, 12, FlxColor.RED, CENTER);
+		add(copyButton);
+		html5DiagnosticObjects.push(copyButton);
+
+		html5DiagnosticCopyStatus = new FlxText(175, panelHeight - 31, panelWidth - 185, '', 12);
+		html5DiagnosticCopyStatus.setFormat(Paths.DEFAULT_FONT, 12, FlxColor.RED, LEFT);
+		addHtml5DiagnosticSprite(html5DiagnosticCopyStatus);
+	}
+
+	function buildHtml5FreezeReport():String
+	{
+		final report:Array<String> = [
+			'NEO HTML5 FREEZE REPORT',
+			'Week index shown: ' + (storyMeta.curWeek + 1),
+			'Song: ' + (SONG?.song ?? 'unknown'),
+			'Primary failure: ' + html5DiagnosticReason,
+			'',
+			'EXPECTED DIALOGUE SCRIPT:',
+			'gameplay:assets/scripts/dialogue.hx',
+			'',
+			'FAILING LOOKUP:',
+			"scripts.getScript('gameplay:assets/scripts/dialogue.hx')",
+			'SOURCE: source/funkin/states/PlayState.hx',
+			'FUNCTION: startHtml5SussusMoogusCutscene()',
+			'',
+			'RELEVANT REGISTRATION / LOAD CODE:',
+			"final dialogueScript:Null<FunkinScript> = scripts.getScript('gameplay:assets/scripts/dialogue.hx');",
+			'',
+			'CAPTURED ERRORS, SCRIPT PARSE MESSAGES, VIDEO/AUDIO FAILURES, AND CODE LOCATIONS:'
+		];
+		for (message in PlayState.html5DiagnosticMessages) report.push('- ' + message);
+		report.push('');
+		report.push('Possible causes: dialogue.hx not listed by HTML5 asset enumeration, a parse/load error,');
+		report.push('or an unexpected library-qualified script name. Causes are confirmed only when logged above.');
+		return report.join("\n");
+	}
+
+	function fallbackCopyHtml5FreezeReport(report:String):Void
+	{
+		try
+		{
+			final textarea:Dynamic = untyped Browser.document.createElement('textarea');
+			textarea.value = report;
+			textarea.setAttribute('readonly', 'readonly');
+			textarea.style.position = 'fixed';
+			textarea.style.left = '-10000px';
+			untyped Browser.document.body.appendChild(textarea);
+			textarea.focus();
+			textarea.select();
+			final copied:Bool = untyped Browser.document.execCommand('copy');
+			untyped Browser.document.body.removeChild(textarea);
+			if (html5DiagnosticCopyStatus != null)
+				html5DiagnosticCopyStatus.text = copied ? 'Copied to clipboard.' : 'Copy failed; use DevTools console.';
+		}
+		catch (e:Dynamic)
+		{
+			if (html5DiagnosticCopyStatus != null) html5DiagnosticCopyStatus.text = 'Copy failed: ' + Std.string(e);
+			PlayState.recordHtml5Diagnostic('Clipboard fallback failed: ' + Std.string(e));
+		}
+	}
+
+	function copyHtml5FreezeReport():Void
+	{
+		final report:String = buildHtml5FreezeReport();
+		#if html5
+		try
+		{
+			final clipboard:Dynamic = untyped Browser.navigator.clipboard;
+			if (clipboard != null && Reflect.isFunction(clipboard.writeText))
+			{
+				final promise:Dynamic = clipboard.writeText(report);
+				promise.then(function(_) {
+					if (html5DiagnosticCopyStatus != null) html5DiagnosticCopyStatus.text = 'Copied to clipboard.';
+				}, function(_) fallbackCopyHtml5FreezeReport(report));
+				return;
+			}
+		}
+		catch (e:Dynamic) {}
+		fallbackCopyHtml5FreezeReport(report);
+		#end
 	}
 
 	function dismissHtml5FreezeDiagnostics():Void
@@ -1154,6 +1264,7 @@ class PlayState extends MusicBeatState
 			sprite.destroy();
 		}
 		html5DiagnosticObjects = [];
+		html5DiagnosticCopyStatus = null;
 		html5DiagnosticVisible = false;
 		camGame.visible = true;
 		camHUD.visible = true;
@@ -1244,6 +1355,9 @@ class PlayState extends MusicBeatState
 		var script:FunkinScript = FunkinScript.fromFile(filePath, name, scripts.scriptShareables);
 		if (script.__garbage)
 		{
+			#if html5
+			PlayState.recordHtml5Diagnostic('SCRIPT LOAD/PARSE FAILED [' + filePath + ']: ' + script.lastErrorMessage);
+			#end
 			script = FlxDestroyUtil.destroy(script);
 			return null;
 		}
@@ -2219,6 +2333,8 @@ class PlayState extends MusicBeatState
 		#if html5
 		if (html5DiagnosticVisible)
 		{
+			if (FlxG.keys.justPressed.C)
+				copyHtml5FreezeReport();
 			if (FlxG.keys.justPressed.ENTER || FlxG.keys.justPressed.ESCAPE)
 				dismissHtml5FreezeDiagnostics();
 			else
