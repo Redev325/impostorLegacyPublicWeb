@@ -778,9 +778,32 @@ public function readDialogue()
 		catch (e:Dynamic)
 		{
 			dialogueUiReady = false;
+			final message:String = 'Dialogue UI initialization exception for ' + (PlayState.SONG?.song ?? 'unknown song') + ': ' + Std.string(e);
 			trace('HTML5 dialogue UI initialization failed: ' + e);
+			#if html5
+			try PlayState.instance?.reportHtml5Diagnostic(message) catch (diagnosticError:Dynamic) {}
+			#end
 		}
 	});
+
+	#if html5
+	// Cover every week/song with dialogue, not only Sussus Moogus. If the UI
+	// timer above never produces the first dialogue line, show the same error
+	// screen and preserve the real exception messages captured so far.
+	new FlxTimer().start(2.5, function(_) {
+		if (!hasDialogue || dialogueUiReady) return;
+		final reason:String = 'Dialogue UI for ' + (PlayState.SONG?.song ?? 'unknown song') + ' did not initialize within 2.5 seconds.';
+		try
+		{
+			PlayState.instance?.reportHtml5Diagnostic(reason);
+			PlayState.instance?.showHtml5FreezeDiagnostics(reason);
+		}
+		catch (e:Dynamic)
+		{
+			trace('Could not show HTML5 dialogue diagnostics: ' + e);
+		}
+	});
+	#end
 }
 
 function getAtt(ac:String)

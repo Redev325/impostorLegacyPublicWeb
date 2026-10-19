@@ -1088,6 +1088,11 @@ class PlayState extends MusicBeatState
 		return clean.length > maxLength ? clean.substr(0, maxLength - 3) + "..." : clean;
 	}
 
+	public function reportHtml5Diagnostic(message:String):Void
+	{
+		PlayState.recordHtml5Diagnostic(message);
+	}
+
 	public function showHtml5FreezeDiagnostics(reason:String):Void
 	{
 		if (html5DiagnosticVisible) return;
