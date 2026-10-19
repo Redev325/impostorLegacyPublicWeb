@@ -159,6 +159,40 @@ function onVidEnd(?deferHtml5Handoff:Bool = true)
 	if (blackYnot != null) FlxTween.tween(blackYnot, {alpha: 0}, 0.5, {onComplete: function() blackYnot.kill()});
 }
 
+/**
+ * Dedicated completion path for the native HTML5 Sussus Moogus intro.
+ * Bypass generic video-end Story Mode guards and open the dialogue directly.
+ */
+public function finishHtml5SussusMoogusIntro():Void
+{
+	try hideCaption() catch (e:Dynamic) trace('HTML5 intro caption cleanup skipped: ' + e);
+	vidPlaying = false;
+	Html5Video.stop();
+	dialogueVideo = null;
+	camGame.visible = true;
+	camHUD.visible = true;
+	camOther.visible = true;
+	if (skipText != null) skipText.visible = false;
+
+	PlayState.seenCutscene = false;
+	hasDialogue = false;
+	dialogueEnded = false;
+
+	// Only called for the already-confirmed first Story Mode intro.
+	final oldVideoCheckStory:Bool = videoCheckStory;
+	videoCheckStory = false;
+	try
+	{
+		readDialogue();
+	}
+	catch (e:Dynamic)
+	{
+		videoCheckStory = oldVideoCheckStory;
+		throw e;
+	}
+	videoCheckStory = oldVideoCheckStory;
+}
+
 public function videoCutscene(?vid:String = 'sussus-moogus', ?dAfter:Bool, ?canSkip:Bool, ?onEnd:Void->Void, ?onFormat:Void->Void)
 {
 	if (IS_HTML5)

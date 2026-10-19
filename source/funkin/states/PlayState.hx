@@ -998,7 +998,7 @@ class PlayState extends MusicBeatState
 						camHUD.visible = true;
 						camOther.visible = true;
 						// PlayState already deferred this callback from the DOM video event, so avoid a second timer.
-						dialogueScript.call('onVidEnd', [false]);
+						dialogueScript.call('finishHtml5SussusMoogusIntro', []);
 
 						// If the post-video callback returned without opening dialogue,
 						// retry the dialogue read for this confirmed Story Mode intro.
@@ -1333,7 +1333,7 @@ class PlayState extends MusicBeatState
 	public function startCountdown():Void
 	{
 		#if html5
-		if (audio != null && !audio.ready)
+		if (audio != null && !audio.ready && audio.loading)
 		{
 			if (!waitingForAudio)
 			{
@@ -1344,6 +1344,12 @@ class PlayState extends MusicBeatState
 				});
 			}
 			return;
+		}
+		if (audio != null && !audio.ready && !audio.loading)
+		{
+			// A failed instrument request must not leave gameplay stuck forever
+			// in the "wait for audio" loop. Continue into gameplay without audio.
+			trace('HTML5 song audio failed to load; continuing without instrument audio.');
 		}
 		#end
 		if (startedCountdown)
