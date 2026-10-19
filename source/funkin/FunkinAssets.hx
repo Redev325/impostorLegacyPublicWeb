@@ -162,6 +162,7 @@ class FunkinAssets
 					}
 					else
 					{
+						PlayState.recordHtml5Diagnostic('HTML5 audio request failed after 3 attempts: ' + url + ' - ' + error.text);
 						Logger.log('HTML5 audio request failed after 3 attempts: ' + url + '\\nException: ' + error.text, ERROR);
 						onComplete();
 					}
@@ -225,12 +226,14 @@ class FunkinAssets
 					Sound.loadFromFile(directUrl)
 						.onComplete(function(sound:Sound) complete(sound))
 						.onError(function(_) {
-							Logger.log('HTML5 audio request failed: ' + directUrl, ERROR);
+							PlayState.recordHtml5Diagnostic('HTML5 audio request failed: ' + directUrl);
+						Logger.log('HTML5 audio request failed: ' + directUrl, ERROR);
 							complete(null);
 						});
 				}
 				catch (e:Dynamic)
 				{
+					PlayState.recordHtml5Diagnostic('HTML5 audio request could not start: ' + directUrl + ' - ' + Std.string(e));
 					Logger.log('HTML5 audio request could not start: ' + directUrl + '\\nException: ' + e, ERROR);
 					complete(null);
 				}

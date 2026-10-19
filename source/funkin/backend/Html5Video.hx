@@ -3,6 +3,7 @@ package funkin.backend;
 #if html5
 import js.Browser;
 import haxe.Timer;
+import funkin.states.PlayState;
 #end
 
 class Html5Video
@@ -196,7 +197,10 @@ class Html5Video
 				if (!Math.isNaN(duration) && duration > 0 && video.currentTime >= duration - 0.10)
 					finish(endCallback);
 			};
-			video.onerror = function(_) finish(errorCallback);
+			video.onerror = function(_) {
+				PlayState.recordHtml5Diagnostic('HTML5 video element reported a media error for ' + path);
+				finish(errorCallback);
+			};
 
 			Browser.document.body.appendChild(video);
 			// Explicitly start loading after insertion so browsers initialize the

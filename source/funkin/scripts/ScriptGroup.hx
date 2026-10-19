@@ -2,6 +2,9 @@ package funkin.scripts;
 
 import extensions.hscript.Sharables;
 import extensions.hscript.InterpEx;
+#if html5
+import funkin.states.PlayState;
+#end
 
 import flixel.util.FlxDestroyUtil;
 import flixel.util.FlxDestroyUtil.IFlxDestroyable;
@@ -103,6 +106,9 @@ class ScriptGroup implements IFlxDestroyable
 				if (!FunkinScript.isEscapedScriptReturn(e))
 				{
 					final context:String = 'Script runtime exception in "' + i.name + '" during "' + event + '": ' + Std.string(e);
+#if html5
+					PlayState.recordHtml5Diagnostic(context);
+					#end
 					Logger.log(context, ERROR, false);
 					throw context;
 				}

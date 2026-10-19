@@ -401,6 +401,20 @@ class PlayState extends MusicBeatState
 	public var songHits:Int = 0;
 	public var songMisses:Int = 0;
 	
+#if html5
+	/** Short rolling buffer of runtime issues to show when a cutscene freezes. */
+	public static var html5DiagnosticMessages:Array<String> = [];
+
+	public static function recordHtml5Diagnostic(message:String):Void
+	{
+		if (message == null) return;
+		final cleaned:String = StringTools.trim(StringTools.replace(StringTools.replace(message, "\r", " "), "\n", " "));
+		if (cleaned.length == 0 || html5DiagnosticMessages.contains(cleaned)) return;
+		html5DiagnosticMessages.push(cleaned);
+		while (html5DiagnosticMessages.length > 12) html5DiagnosticMessages.shift();
+	}
+#end
+
 	public static var seenCutscene:Bool = false;
 	public static var deathCounter:Int = 0;
 	
@@ -1007,8 +1021,14 @@ class PlayState extends MusicBeatState
 							if (startedCountdown) return;
 							final currentDialogue:Null<FunkinScript> = scripts.getScript('gameplay:assets/scripts/dialogue.hx');
 							if (currentDialogue != null && currentDialogue.get('dialogueUiReady') == true) return;
-							trace('HTML5 Sussus Moogus dialogue UI did not initialize; recovering to countdown.');
-							try currentDialogue?.call('abandonHtml5SussusMoogusIntro', []) catch (e:Dynamic) trace('HTML5 intro cleanup failed: ' + e);
+							final reason:String = currentDialogue == null
+								? 'Dialogue script was not registered after the intro video.'
+								: 'Dialogue UI did not become ready within 2 seconds of the video ending.';
+							PlayState.recordHtml5Diagnostic(reason);
+							showHtml5FreezeDiagnostics(reason);
+							try currentDialogue?.call('abandonHtml5SussusMoogusIntro', []) catch (e:Dynamic) {
+								PlayState.recordHtml5Diagnostic('Dialogue cleanup failed: ' + Std.string(e));
+							}
 							inCutscene = false;
 							seenCutscene = true;
 							songStartCallback = startCountdown;
@@ -1018,6 +1038,7 @@ class PlayState extends MusicBeatState
 					}
 					catch (e:Dynamic)
 					{
+						PlayState.recordHtml5Diagnostic('First-song dialogue handoff exception: ' + Std.string(e));
 						trace('HTML5 Sussus Moogus dialogue handoff error: ' + e);
 					}
 				}
@@ -1035,6 +1056,92 @@ class PlayState extends MusicBeatState
 			inCutscene = false;
 			startCountdown();
 		}
+	}
+	#end
+
+	#if html5
+	var html5DiagnosticVisible:Bool = false;
+	var html5DiagnosticObjects:Array<FlxSprite> = [];
+
+	function addHtml5DiagnosticSprite(sprite:FlxSprite):Void
+	{
+		sprite.cameras = [camOther];
+		sprite.scrollFactor.set();
+		add(sprite);
+		html5DiagnosticObjects.push(sprite);
+	}
+
+	function shortenHtml5Diagnostic(value:String, maxLength:Int):String
+	{
+		final clean:String = StringTools.replace(StringTools.replace(value, "\r", " "), "\n", " ");
+		return clean.length > maxLength ? clean.substr(0, maxLength - 3) + "..." : clean;
+	}
+
+	public function showHtml5FreezeDiagnostics(reason:String):Void
+	{
+		if (html5DiagnosticVisible) return;
+		html5DiagnosticVisible = true;
+		camGame.visible = false;
+		camHUD.visible = false;
+		camOther.visible = true;
+
+		// Match the supplied concept: full black screen with a compact red frame
+		// and readable error details in the upper-left corner.
+		final background:FlxSprite = new FlxSprite().makeGraphic(FlxG.width, FlxG.height, FlxColor.BLACK);
+		addHtml5DiagnosticSprite(background);
+
+		final panelWidth:Int = Std.int(Math.min(640, FlxG.width));
+		final panelHeight:Int = Std.int(Math.min(250, FlxG.height));
+		final borderSize:Int = 3;
+		for (edge in [
+			{x: 0, y: 0, w: panelWidth, h: borderSize},
+			{x: 0, y: 0, w: borderSize, h: panelHeight},
+			{x: panelWidth - borderSize, y: 0, w: borderSize, h: panelHeight},
+			{x: 0, y: panelHeight - borderSize, w: panelWidth, h: borderSize}
+		])
+		{
+			final border:FlxSprite = new FlxSprite(edge.x, edge.y).makeGraphic(edge.w, edge.h, FlxColor.RED);
+			addHtml5DiagnosticSprite(border);
+		}
+
+		final weekNumber:Int = storyMeta.curWeek + 1;
+		final songName:String = SONG?.song ?? 'unknown song';
+		final title:FlxText = new FlxText(9, 7, panelWidth - 18, 'Error for week ' + weekNumber + ' - ' + songName, 18);
+		title.setFormat(Paths.DEFAULT_FONT, 18, FlxColor.RED, LEFT);
+		addHtml5DiagnosticSprite(title);
+
+		var lines:Array<String> = [];
+		lines.push('Freeze detected: ' + shortenHtml5Diagnostic(reason, 70));
+		lines.push('Captured errors:');
+		final messageStart:Int = Std.int(Math.max(0, html5DiagnosticMessages.length - 4));
+		if (html5DiagnosticMessages.length == 0)
+			lines.push(' - No runtime exception was captured before the timeout.');
+		else
+		{
+			for (i in messageStart...html5DiagnosticMessages.length)
+				lines.push(' - ' + shortenHtml5Diagnostic(html5DiagnosticMessages[i], 69));
+		}
+		lines.push('Possible causes: dialogue HScript exception, missing dialogue/character assets,');
+		lines.push('or an HTML5 video/audio callback or network request that stalled.');
+		lines.push('Press ENTER or ESC to dismiss this screen and continue.');
+
+		final details:FlxText = new FlxText(9, 55, panelWidth - 18, lines.join("\n"), 12);
+		details.setFormat(Paths.DEFAULT_FONT, 12, FlxColor.RED, LEFT);
+		addHtml5DiagnosticSprite(details);
+	}
+
+	function dismissHtml5FreezeDiagnostics():Void
+	{
+		for (sprite in html5DiagnosticObjects)
+		{
+			remove(sprite, true);
+			sprite.destroy();
+		}
+		html5DiagnosticObjects = [];
+		html5DiagnosticVisible = false;
+		camGame.visible = true;
+		camHUD.visible = true;
+		camOther.visible = true;
 	}
 	#end
 
@@ -2093,6 +2200,20 @@ class PlayState extends MusicBeatState
 	
 	override public function update(elapsed:Float):Void
 	{
+		#if html5
+		if (html5DiagnosticVisible)
+		{
+			if (FlxG.keys.justPressed.ENTER || FlxG.keys.justPressed.ESCAPE)
+				dismissHtml5FreezeDiagnostics();
+			else
+			{
+				super.update(elapsed);
+				return;
+			}
+			super.update(elapsed);
+			return;
+		}
+		#end
 		canPlayAwardSound = true;
 		
 		if (cameraLerping && !inCutscene)
