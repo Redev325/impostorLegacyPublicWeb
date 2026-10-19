@@ -173,8 +173,13 @@ jobs:
       - name: Upload game to GitHub Pages
         uses: actions/upload-pages-artifact@v3
         with:
+          # A retry creates a new artifact for the same workflow run. Include
+          # the attempt number so deploy-pages never sees duplicate names.
+          name: github-pages-${{ github.run_attempt }}
           path: extracted
 
       - name: Deploy game to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
