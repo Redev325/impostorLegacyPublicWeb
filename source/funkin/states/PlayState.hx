@@ -1038,9 +1038,20 @@ class PlayState extends MusicBeatState
 					}
 					catch (e:Dynamic)
 					{
-						PlayState.recordHtml5Diagnostic('First-song dialogue handoff exception: ' + Std.string(e));
+						final reason:String = 'First-song dialogue handoff exception: ' + Std.string(e);
+						PlayState.recordHtml5Diagnostic(reason);
+						showHtml5FreezeDiagnostics(reason);
 						trace('HTML5 Sussus Moogus dialogue handoff error: ' + e);
 					}
+				}
+
+				if (dialogueScript == null || !dialogueScript.exists('finishHtml5SussusMoogusIntro'))
+				{
+					final reason:String = dialogueScript == null
+						? 'The gameplay dialogue script was missing after the intro video.'
+						: 'The gameplay dialogue script did not expose the intro completion function.';
+					PlayState.recordHtml5Diagnostic(reason);
+					showHtml5FreezeDiagnostics(reason);
 				}
 
 				inCutscene = false;
@@ -1091,7 +1102,7 @@ class PlayState extends MusicBeatState
 		addHtml5DiagnosticSprite(background);
 
 		final panelWidth:Int = Std.int(Math.min(640, FlxG.width));
-		final panelHeight:Int = Std.int(Math.min(250, FlxG.height));
+		final panelHeight:Int = Std.int(Math.min(390, FlxG.height));
 		final borderSize:Int = 3;
 		for (edge in [
 			{x: 0, y: 0, w: panelWidth, h: borderSize},
@@ -1113,7 +1124,7 @@ class PlayState extends MusicBeatState
 		var lines:Array<String> = [];
 		lines.push('Freeze detected: ' + shortenHtml5Diagnostic(reason, 70));
 		lines.push('Captured errors:');
-		final messageStart:Int = Std.int(Math.max(0, html5DiagnosticMessages.length - 4));
+		final messageStart:Int = Std.int(Math.max(0, html5DiagnosticMessages.length - 12));
 		if (html5DiagnosticMessages.length == 0)
 			lines.push(' - No runtime exception was captured before the timeout.');
 		else
