@@ -981,7 +981,7 @@ class PlayState extends MusicBeatState
 		final finishCutscene:Void->Void = function() {
 			new FlxTimer().start(0, function(_) {
 				final dialogueScript:Null<FunkinScript> = scripts.getScript('gameplay:assets/scripts/dialogue.hx');
-				if (dialogueScript != null && dialogueScript.exists('onVidEnd'))
+				if (dialogueScript != null && dialogueScript.exists('finishHtml5SussusMoogusIntro'))
 				{
 					try
 					{
@@ -1000,18 +1000,20 @@ class PlayState extends MusicBeatState
 						// PlayState already deferred this callback from the DOM video event, so avoid a second timer.
 						dialogueScript.call('finishHtml5SussusMoogusIntro', []);
 
-						// If the post-video callback returned without opening dialogue,
-						// retry the dialogue read for this confirmed Story Mode intro.
-						// The script's Story Mode guard can be stale on HTML5, so bypass
-						// it only for this one synchronous fallback call.
-						if (dialogueScript.get('hasDialogue') != true)
-						{
-							final previousVideoCheckStory:Dynamic = dialogueScript.get('videoCheckStory');
-							dialogueScript.set('videoCheckStory', false);
-							seenCutscene = false;
-							dialogueScript.call('readDialogue', []);
-							dialogueScript.set('videoCheckStory', previousVideoCheckStory);
-						}
+						// Check the actual UI after its 0.5-second construction delay.
+						// If it never becomes ready, clean partial visuals and force the
+						// song countdown so an HScript/UI exception cannot freeze the game.
+						new FlxTimer().start(2.0, function(_) {
+							if (startedCountdown) return;
+							final currentDialogue:Null<FunkinScript> = scripts.getScript('gameplay:assets/scripts/dialogue.hx');
+							if (currentDialogue != null && currentDialogue.get('dialogueUiReady') == true) return;
+							trace('HTML5 Sussus Moogus dialogue UI did not initialize; recovering to countdown.');
+							try currentDialogue?.call('abandonHtml5SussusMoogusIntro', []) catch (e:Dynamic) trace('HTML5 intro cleanup failed: ' + e);
+							inCutscene = false;
+							seenCutscene = true;
+							songStartCallback = startCountdown;
+							startCountdown();
+						});
 						return;
 					}
 					catch (e:Dynamic)
@@ -1328,6 +1330,7 @@ class PlayState extends MusicBeatState
 	
 	#if html5
 	var waitingForAudio:Bool = false;
+	var audioWaitAttempts:Int = 0;
 	#end
 	
 	public function startCountdown():Void
@@ -1340,16 +1343,30 @@ class PlayState extends MusicBeatState
 				waitingForAudio = true;
 				new FlxTimer().start(0.1, function(_) {
 					waitingForAudio = false;
-					if (startingSong && !startedCountdown) startCountdown();
+					if (audio != null && audio.ready)
+					{
+						audioWaitAttempts = 0;
+						if (startingSong && !startedCountdown) startCountdown();
+						return;
+					}
+					audioWaitAttempts++;
+					if (audioWaitAttempts >= 80)
+					{
+						trace('HTML5 song audio wait timed out; continuing without instrument audio.');
+						if (audio != null) audio.loading = false;
+						audioWaitAttempts = 0;
+						if (startingSong && !startedCountdown) startCountdown();
+					}
+					else if (startingSong && !startedCountdown) startCountdown();
 				});
 			}
 			return;
 		}
+		if (audio == null || audio.ready || !audio.loading) audioWaitAttempts = 0;
 		if (audio != null && !audio.ready && !audio.loading)
 		{
-			// A failed instrument request must not leave gameplay stuck forever
-			// in the "wait for audio" loop. Continue into gameplay without audio.
-			trace('HTML5 song audio failed to load; continuing without instrument audio.');
+			// A failed or timed-out instrument request must not deadlock gameplay.
+			trace('HTML5 song audio unavailable; continuing without instrument audio.');
 		}
 		#end
 		if (startedCountdown)

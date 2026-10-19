@@ -66,6 +66,7 @@ var dialogueAfter:Bool = false;
 var rtlMode:Bool = false;
 var rtlFullText:String = "";
 var html5VideoCutsceneQueued:Bool = false;
+public var dialogueUiReady:Bool = false;
 
 #if html5
 function addDialogueObject(obj:Dynamic):Void
@@ -165,6 +166,7 @@ function onVidEnd(?deferHtml5Handoff:Bool = true)
  */
 public function finishHtml5SussusMoogusIntro():Void
 {
+	dialogueUiReady = false;
 	try hideCaption() catch (e:Dynamic) trace('HTML5 intro caption cleanup skipped: ' + e);
 	vidPlaying = false;
 	Html5Video.stop();
@@ -191,6 +193,20 @@ public function finishHtml5SussusMoogusIntro():Void
 		throw e;
 	}
 	videoCheckStory = oldVideoCheckStory;
+}
+
+/**
+ * Cleanup partial dialogue visuals if the first HTML5 intro handoff fails.
+ * The native PlayState watchdog will then release the game into its countdown.
+ */
+public function abandonHtml5SussusMoogusIntro():Void
+{
+	dialogueUiReady = false;
+	hasDialogue = false;
+	vidPlaying = false;
+	inCutscene = false;
+	try if (bgFade != null) bgFade.kill() catch (e:Dynamic) {}
+	try if (boxGroup != null) boxGroup.kill() catch (e:Dynamic) {}
 }
 
 public function videoCutscene(?vid:String = 'sussus-moogus', ?dAfter:Bool, ?canSkip:Bool, ?onEnd:Void->Void, ?onFormat:Void->Void)
@@ -553,6 +569,7 @@ public function readDialogue()
 		startCountdown();
 		return;
 	}
+	dialogueUiReady = false;
 	var activeSong:String = PlayState.SONG?.song ?? '';
 	var safeSong:String = Paths.sanitize(activeSong);
 	#if html5
@@ -750,10 +767,19 @@ public function readDialogue()
 	}
 	
 	FlxTimer.wait(0.5, function() {
-		box.alpha = 1;
-		bubble.alpha = 1;
-		icon.alpha = 1;
-		refreshDialogue();
+		try
+		{
+			box.alpha = 1;
+			bubble.alpha = 1;
+			icon.alpha = 1;
+			refreshDialogue();
+			dialogueUiReady = true;
+		}
+		catch (e:Dynamic)
+		{
+			dialogueUiReady = false;
+			trace('HTML5 dialogue UI initialization failed: ' + e);
+		}
 	});
 }
 
