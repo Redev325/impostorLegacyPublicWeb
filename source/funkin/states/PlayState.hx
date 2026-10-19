@@ -997,7 +997,8 @@ class PlayState extends MusicBeatState
 						camGame.visible = true;
 						camHUD.visible = true;
 						camOther.visible = true;
-						dialogueScript.call('onVidEnd', []);
+						// PlayState already deferred this callback from the DOM video event, so avoid a second timer.
+						dialogueScript.call('onVidEnd', [false]);
 						return;
 					}
 					catch (e:Dynamic)
