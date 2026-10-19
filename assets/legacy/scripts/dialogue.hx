@@ -92,7 +92,7 @@ function onCreatePost()
 	skipText.zIndex = 12;
 }
 
-function onVidEnd()
+function onVidEnd(?deferHtml5Handoff:Bool = true)
 {
 	// Caption helpers are shared across HScript files. A missing/unavailable
 	// helper must never abort the video-to-dialogue handoff on HTML5.
@@ -118,7 +118,7 @@ function onVidEnd()
 		camOther.visible = true;
 		skipText.visible = false;
 
-		new FlxTimer().start(0, function(_) {
+		final handoff:Void->Void = function() {
 			try
 			{
 				if (dialogueAfter && (PlayState.isStoryMode || !videoCheckStory))
@@ -142,7 +142,11 @@ function onVidEnd()
 				PlayState.instance.songStartCallback = PlayState.instance.startCountdown;
 				try startCountdown() catch (fallback:Dynamic) trace('HTML5 countdown fallback error: ' + fallback);
 			}
-		});
+		};
+		if (deferHtml5Handoff)
+			new FlxTimer().start(0, function(_) handoff());
+		else
+			handoff();
 		return;
 	}
 	dialogueVideo.destroy();
