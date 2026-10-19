@@ -456,7 +456,14 @@ function refreshDialogue(?oldToo = false)
 		curIcon = 'red';
 		boxChar = Lang.str('red', 'Red');
 		dropText.text = boxChar;
-		try icon.changeIcon(curIcon) catch (_) {}
+		try
+		{
+			icon.changeIcon(curIcon);
+		}
+		catch (iconError:Dynamic)
+		{
+			trace('HTML5 dialogue icon fallback failed: ' + iconError);
+		}
 	}
 	
 	var textStart:Int = curCharacter.length + 3 + curEmote.length;
