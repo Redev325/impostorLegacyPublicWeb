@@ -999,6 +999,19 @@ class PlayState extends MusicBeatState
 						camOther.visible = true;
 						// PlayState already deferred this callback from the DOM video event, so avoid a second timer.
 						dialogueScript.call('onVidEnd', [false]);
+
+						// If the post-video callback returned without opening dialogue,
+						// retry the dialogue read for this confirmed Story Mode intro.
+						// The script's Story Mode guard can be stale on HTML5, so bypass
+						// it only for this one synchronous fallback call.
+						if (dialogueScript.get('hasDialogue') != true)
+						{
+							final previousVideoCheckStory:Dynamic = dialogueScript.get('videoCheckStory');
+							dialogueScript.set('videoCheckStory', false);
+							seenCutscene = false;
+							dialogueScript.call('readDialogue', []);
+							dialogueScript.set('videoCheckStory', previousVideoCheckStory);
+						}
 						return;
 					}
 					catch (e:Dynamic)

@@ -514,7 +514,7 @@ public function getHudV5SongDialogue(?song:String):Null<String>
 
 public function readDialogue()
 {
-	if ((videoCheckStory && !isStoryMode) || PlayState.seenCutscene)
+	if ((videoCheckStory && !PlayState.isStoryMode) || PlayState.seenCutscene)
 	{
 		startCountdown();
 		return;
