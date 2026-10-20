@@ -572,20 +572,20 @@ public function getHudV5SongDialogue(?song:String):Null<String>
 
 function getSussusMoogusDialogueFallback():String
 {
-	return ':red:sad:dialogue_moogus0\\n'
-		+ ':bf:neutral:dialogue_moogus1\\n'
-		+ ':gf:suspect:dialogue_moogus2\\n'
-		+ ':gf:suspect:dialogue_moogus3\\n'
-		+ ':gf:q:dialogue_moogus4\\n'
-		+ ':bf:neutral:dialogue_moogus5\\n'
-		+ ':bf:q:dialogue_moogus6\\n'
-		+ ':red:sad:dialogue_moogus7\\n'
-		+ ':gf:happy:dialogue_moogus8\\n'
-		+ ':gf:mad:dialogue_moogus9\\n'
-		+ ':red:neutral:dialogue_moogus10\\n'
-		+ ':bf:happy:dialogue_moogus11\\n'
-		+ ':red:happy:dialogue_moogus12\\n'
-		+ ':red:happy:dialogue_moogus13\\n'
+	return ':red:sad:dialogue_moogus0\n'
+		+ ':bf:neutral:dialogue_moogus1\n'
+		+ ':gf:suspect:dialogue_moogus2\n'
+		+ ':gf:suspect:dialogue_moogus3\n'
+		+ ':gf:q:dialogue_moogus4\n'
+		+ ':bf:neutral:dialogue_moogus5\n'
+		+ ':bf:q:dialogue_moogus6\n'
+		+ ':red:sad:dialogue_moogus7\n'
+		+ ':gf:happy:dialogue_moogus8\n'
+		+ ':gf:mad:dialogue_moogus9\n'
+		+ ':red:neutral:dialogue_moogus10\n'
+		+ ':bf:happy:dialogue_moogus11\n'
+		+ ':red:happy:dialogue_moogus12\n'
+		+ ':red:happy:dialogue_moogus13\n'
 		+ ':bf:neutral:dialogue_moogus14';
 }
 
@@ -641,7 +641,7 @@ public function readDialogue()
 	if (dialogueList.length == 0 && isSussusMoogus)
 	{
 		// Last-resort built-in first-song dialogue if its cached text is empty.
-		dialogueList = getSussusMoogusDialogueFallback().split("\\n");
+		dialogueList = getSussusMoogusDialogueFallback().split("\n");
 		try PlayState.instance?.reportHtml5DialoguePhase('dialogueList empty; forced built-in Sussus Moogus dialogue; lineCount=' + dialogueList.length) catch (phaseError:Dynamic) {}
 	}
 	if (dialogueList.length == 0)
