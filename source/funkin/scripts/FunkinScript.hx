@@ -265,7 +265,12 @@ class FunkinScript extends IrisEx implements IFlxDestroyable
 		});
 		set('dialogueUpdateDefaultFormat', function(text:flixel.text.FlxText):Void {
 			if (text != null && text.textField != null)
-				text.textField.defaultTextFormat = text._defaultFormat;
+			{
+				// FlxText._defaultFormat is private; retrieve the existing format
+				// through reflection, then apply it via the public TextField API.
+				final format:Dynamic = Reflect.field(text, '_defaultFormat');
+				if (format != null) text.textField.defaultTextFormat = cast format;
+			}
 		});
 		set('dialogueColorFromString', function(value:String):Int {
 			final parsed:Null<flixel.util.FlxColor> = flixel.util.FlxColor.fromString(value);
