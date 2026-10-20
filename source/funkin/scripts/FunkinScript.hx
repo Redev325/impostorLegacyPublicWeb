@@ -257,6 +257,19 @@ class FunkinScript extends IrisEx implements IFlxDestroyable
 	override function preset()
 	{
 		super.preset();
+
+		// Some Flixel methods are inline and disappear from JavaScript reflection,
+		// so legacy HScript needs small native bridges for the HTML5 build.
+		set('dialogueScreenCenter', function(sprite:flixel.FlxObject, ?axes:flixel.util.FlxAxes):Void {
+			if (sprite != null) sprite.screenCenter(axes ?? flixel.util.FlxAxes.XY);
+		});
+		set('dialogueUpdateDefaultFormat', function(text:flixel.text.FlxText):Void {
+			if (text != null) text.updateDefaultFormat();
+		});
+		set('dialogueColorFromString', function(value:String):Int {
+			final parsed:Null<flixel.util.FlxColor> = flixel.util.FlxColor.fromString(value);
+			return parsed == null ? 0xFFFFFFFF : (cast parsed : Int);
+		});
 		
 		#if hl
 		set('Math', hl.HLFixes.HLMath);

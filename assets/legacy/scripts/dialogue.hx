@@ -277,7 +277,7 @@ public function videoCutscene(?vid:String = 'sussus-moogus', ?dAfter:Bool, ?canS
 		dialogueVideo.setGraphicSize(0, FlxG.height);
 		dialogueVideo.antialiasing = ClientPrefs.globalAntialiasing;
 		dialogueVideo.updateHitbox();
-		dialogueVideo.screenCenter();
+		dialogueScreenCenter(dialogueVideo);
 		camGame.visible = false;
 		textFade();
 	});
@@ -345,7 +345,7 @@ function speakerAnims(char:String = 'bf')
 	curSide = dialogueChar.side;
 	curSound = dialogueChar.sound;
 	curIcon = dialogueChar.icon;
-	box.rgbGraphics.setColors([FlxColor.fromString(dialogueChar.boxColor), 0xFF666666, FlxColor.fromString(dialogueChar.boxShadeColor)]);
+	box.rgbGraphics.setColors([dialogueColorFromString(dialogueChar.boxColor), 0xFF666666, dialogueColorFromString(dialogueChar.boxShadeColor)]);
 	
 	var who:FunkinSprite = portrait[curSide];
 	if (loadUp)
@@ -718,7 +718,7 @@ public function readDialogue()
 	// Dialgoue box
 	box = new funkin.objects.RGBSprite(0, 431).loadGraphic(Paths.image('ui/dialogue/dialogueBox'));
 	try PlayState.instance?.reportHtml5DialoguePhase('UI checkpoint 5: dialogue box graphic loaded') catch (phaseError:Dynamic) {}
-	box.screenCenter(FlxAxes.X);
+	dialogueScreenCenter(box, FlxAxes.X);
 	box.x = Math.round(box.x);
 	box.rgbGraphics.setColors([0xFFFF1515, 0xFF666666, 0xFF7D0058]);
 	
@@ -730,7 +730,7 @@ public function readDialogue()
 	var port1:FunkinSprite = new FunkinSprite(206.85, 198);
 	port1.frames = Paths.getSparrowAtlas('ui/dialogue/characters/gf');
 	port1.updateHitbox();
-	port1.screenCenter(FlxAxes.X);
+	dialogueScreenCenter(port1, FlxAxes.X);
 	port1.visible = false;
 	port1.alpha = 0;
 	
@@ -751,7 +751,7 @@ public function readDialogue()
 	bubble_old = new FlxSprite(355.85, 616 /* thats just, evil. oh my god ... */).loadGraphic(Paths.image('ui/dialogue/bubble'));
 	for (i in [bubble, bubble_old])
 	{
-		i.screenCenter(FlxAxes.X);
+		dialogueScreenCenter(i, FlxAxes.X);
 		i.x = Math.round(i.x + 18.5); // fuck it
 		boxGroup.add(i);
 	}
@@ -813,7 +813,7 @@ public function readDialogue()
 	for (obj in [swagDialogue, rtlDisplayText, rtlWrapMeasure, text_old])
 	{
 		obj._defaultFormat.leading = (Lang.getFlag('dialogueLeading') ?? 0);
-		obj.updateDefaultFormat();
+		dialogueUpdateDefaultFormat(obj);
 	}
 	try PlayState.instance?.reportHtml5DialoguePhase('UI checkpoint 10: legacy dialogue text fields and formats created') catch (phaseError:Dynamic) {}
 	
