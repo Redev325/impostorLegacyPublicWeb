@@ -313,6 +313,9 @@ public function textFade()
 **/
 function speakerAnims(char:String = 'bf')
 {
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims entered; character=' + char) catch (phaseError:Dynamic) {}
+	#end
 	// oh my fucking god dude
 	var loadUp:Bool = false;
 	
@@ -325,11 +328,17 @@ function speakerAnims(char:String = 'bf')
 	{
 		#if html5
 		var rawDialogueChar:Null<String> = getHtml5DialogueCharacter(char);
+		#if html5
+		try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims asset lookup returned; found=' + (rawDialogueChar != null) + ', character=' + char) catch (phaseError:Dynamic) {}
+		#end
 		if (rawDialogueChar == null)
 		{
 			return portrait[curSide];
 		}
 		dialogueChar = FunkinAssets.parseJson5(rawDialogueChar);
+		#if html5
+		try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims parsed character data; valid=' + (dialogueChar != null)) catch (phaseError:Dynamic) {}
+		#end
 		#else
 		var path:String = Paths.getPath('data/dialogue/' + char + '.json', null, PathsTestMode.NORMAL);
 		dialogueChar = FunkinAssets.parseJson5(FunkinAssets.getContent(path));
@@ -456,19 +465,34 @@ function refreshDialogue(?oldToo = false)
 	
 	curCharacter = Std.string(splitName[1]).trim();
 	if (curCharacter.length == 0) curCharacter = 'bf';
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue parsed character=' + curCharacter) catch (phaseError:Dynamic) {}
+	#end
 	
 	curEmote = Std.string(splitName[2]).trim();
 	if (curEmote.length == 0) curEmote = 'neutral';
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue parsed emote=' + curEmote) catch (phaseError:Dynamic) {}
+	#end
 	
 	// Never let a missing HTML5 portrait/audio asset prevent the dialogue
 	// box and text from appearing. The original desktop script assumes all
 	// dialogue assets are synchronous; the web build cannot make that assumption.
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue before v4SpeakerShit') catch (phaseError:Dynamic) {}
+	#end
 	try
 	{
 		v4SpeakerShit();
+		#if html5
+		try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue v4SpeakerShit returned') catch (phaseError:Dynamic) {}
+		#end
 	}
 	catch (e:Dynamic)
 	{
+		#if html5
+		try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue v4SpeakerShit threw: ' + Std.string(e)) catch (phaseError:Dynamic) {}
+		#end
 		trace('HTML5 dialogue speaker setup failed: ' + e);
 		curSide = 0;
 		curSound = 'red';
@@ -571,10 +595,22 @@ function refreshDialogue(?oldToo = false)
 **/
 function v4SpeakerShit()
 {
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('v4SpeakerShit entered; character=' + curCharacter) catch (phaseError:Dynamic) {}
+	#end
 	var speaker:FlxSprite = speakerAnims(curCharacter);
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('v4SpeakerShit speaker lookup returned; null=' + (speaker == null)) catch (phaseError:Dynamic) {}
+	#end
 	swagDialogue.sounds = [FlxG.sound.load(Paths.sound('dialogue/' + curSound), 0.6)];
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('v4SpeakerShit sound assignment completed') catch (phaseError:Dynamic) {}
+	#end
 	dropText.text = boxChar;
 	icon.changeIcon(curIcon);
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('v4SpeakerShit text and icon setup completed') catch (phaseError:Dynamic) {}
+	#end
 	
 	if (!speaker.visible)
 	{
