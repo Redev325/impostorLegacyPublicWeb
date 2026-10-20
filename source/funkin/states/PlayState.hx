@@ -1008,6 +1008,8 @@ class PlayState extends MusicBeatState
 	function startHtml5SussusMoogusCutscene():Void
 	{
 		if (html5SussusCutsceneStarted || seenCutscene || !isStoryMode) return;
+		html5DialogueUiReady = false;
+		html5DialoguePhase = 'Waiting for Sussus Moogus intro video to end';
 		html5SussusCutsceneStarted = true;
 		inCutscene = true;
 		songStartCallback = () -> {};
@@ -1039,13 +1041,16 @@ class PlayState extends MusicBeatState
 						// If it never becomes ready, clean partial visuals and force the
 						// song countdown so an HScript/UI exception cannot freeze the game.
 						new FlxTimer().start(2.0, function(_) {
-							if (startedCountdown) return;
+							if (startedCountdown || html5DialogueUiReady) return;
 							final currentDialogue:Null<FunkinScript> = scripts.getScript('gameplay:assets/scripts/dialogue.hx');
-							if (currentDialogue != null && currentDialogue.get('dialogueUiReady') == true) return;
-							final reason:String = currentDialogue == null
+							final scriptFlagReady:Bool = currentDialogue != null && currentDialogue.get('dialogueUiReady') == true;
+							if (scriptFlagReady) return;
+							final reason:String = (currentDialogue == null
 								? 'Dialogue script was not registered after the intro video.'
-								: 'Dialogue UI did not become ready within 2 seconds of the video ending.';
-							PlayState.recordHtml5Diagnostic(reason);
+								: 'Dialogue UI did not become ready within 2 seconds of the video ending.')
+								+ ' Last phase: ' + html5DialoguePhase;
+							PlayState.recordHtml5Diagnostic('Dialogue phase at timeout: ' + html5DialoguePhase);
+							PlayState.recordHtml5Diagnostic('Dialogue readiness flags: native=' + html5DialogueUiReady + ', script=' + scriptFlagReady);
 							showHtml5FreezeDiagnostics(reason);
 							try currentDialogue?.call('abandonHtml5SussusMoogusIntro', []) catch (e:Dynamic) {
 								PlayState.recordHtml5Diagnostic('Dialogue cleanup failed: ' + Std.string(e));
@@ -1092,6 +1097,8 @@ class PlayState extends MusicBeatState
 	#end
 
 	#if html5
+	var html5DialogueUiReady:Bool = false;
+	var html5DialoguePhase:String = 'Not started';
 	var html5DiagnosticVisible:Bool = false;
 	var html5DiagnosticObjects:Array<FlxBasic> = [];
 	var html5DiagnosticReason:String = '';
@@ -1114,6 +1121,17 @@ class PlayState extends MusicBeatState
 	public function reportHtml5Diagnostic(message:String):Void
 	{
 		PlayState.recordHtml5Diagnostic(message);
+	}
+
+	public function reportHtml5DialoguePhase(phase:String):Void
+	{
+		html5DialoguePhase = phase ?? 'Unknown phase';
+	}
+
+	public function markHtml5DialogueUiReady(phase:String):Void
+	{
+		html5DialoguePhase = phase ?? 'Dialogue UI ready';
+		html5DialogueUiReady = true;
 	}
 
 	public function showHtml5FreezeDiagnostics(reason:String):Void
@@ -1189,6 +1207,8 @@ class PlayState extends MusicBeatState
 			'NEO HTML5 FREEZE REPORT',
 			'Week index shown: ' + (storyMeta.curWeek + 1),
 			'Song: ' + (SONG?.song ?? 'unknown'),
+			'Dialogue UI phase: ' + html5DialoguePhase,
+			'Native dialogue ready acknowledgement: ' + html5DialogueUiReady,
 			'Primary failure: ' + html5DiagnosticReason,
 			'',
 			'EXPECTED DIALOGUE SCRIPT:',

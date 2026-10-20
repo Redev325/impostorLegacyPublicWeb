@@ -179,6 +179,7 @@ public function finishHtml5SussusMoogusIntro():Void
 	PlayState.seenCutscene = false;
 	hasDialogue = false;
 	dialogueEnded = false;
+	try PlayState.instance?.reportHtml5DialoguePhase('Intro handoff entered finishHtml5SussusMoogusIntro') catch (phaseError:Dynamic) {}
 
 	// Only called for the already-confirmed first Story Mode intro.
 	final oldVideoCheckStory:Bool = videoCheckStory;
@@ -569,23 +570,47 @@ public function getHudV5SongDialogue(?song:String):Null<String>
 	#end
 }
 
+function getSussusMoogusDialogueFallback():String
+{
+	return ':red:sad:dialogue_moogus0\\n'
+		+ ':bf:neutral:dialogue_moogus1\\n'
+		+ ':gf:suspect:dialogue_moogus2\\n'
+		+ ':gf:suspect:dialogue_moogus3\\n'
+		+ ':gf:q:dialogue_moogus4\\n'
+		+ ':bf:neutral:dialogue_moogus5\\n'
+		+ ':bf:q:dialogue_moogus6\\n'
+		+ ':red:sad:dialogue_moogus7\\n'
+		+ ':gf:happy:dialogue_moogus8\\n'
+		+ ':gf:mad:dialogue_moogus9\\n'
+		+ ':red:neutral:dialogue_moogus10\\n'
+		+ ':bf:happy:dialogue_moogus11\\n'
+		+ ':red:happy:dialogue_moogus12\\n'
+		+ ':red:happy:dialogue_moogus13\\n'
+		+ ':bf:neutral:dialogue_moogus14';
+}
+
 public function readDialogue()
 {
+	try PlayState.instance?.reportHtml5DialoguePhase('readDialogue entered; activeSong=' + (PlayState.SONG?.song ?? 'unknown')) catch (phaseError:Dynamic) {}
 	if ((videoCheckStory && !PlayState.isStoryMode) || PlayState.seenCutscene)
 	{
+		try PlayState.instance?.reportHtml5DialoguePhase('readDialogue exited at story/cutscene guard; videoCheckStory=' + videoCheckStory + ', storyMode=' + PlayState.isStoryMode + ', seenCutscene=' + PlayState.seenCutscene) catch (phaseError:Dynamic) {}
 		startCountdown();
 		return;
 	}
 	dialogueUiReady = false;
 	var activeSong:String = PlayState.SONG?.song ?? '';
 	var safeSong:String = Paths.sanitize(activeSong);
+	final normalizedSong:String = StringTools.replace(StringTools.replace(activeSong.toLowerCase().trim(), ' ', '-'), '_', '-');
+	final isSussusMoogus:Bool = safeSong.toLowerCase() == 'sussus-moogus' || normalizedSong == 'sussus-moogus';
+	try PlayState.instance?.reportHtml5DialoguePhase('readDialogue passed guard; normalizedSong=' + normalizedSong + ', safeSong=' + safeSong) catch (phaseError:Dynamic) {} 
 	#if html5
 	var cachedDialogue:Null<String> = getHtml5SongDialogue(safeSong);
 	// Sussus Moogus must still have its real dialogue even when an older
 	// browser cache/build is missing the tiny dialogue.txt asset. Keep the
 	// source file authoritative when available, with this exact source-text
 	// fallback as a last-resort HTML5 safety net.
-	if ((cachedDialogue == null || cachedDialogue.trim().length == 0) && safeSong == 'sussus-moogus')
+	if ((cachedDialogue == null || cachedDialogue.trim().length == 0) && isSussusMoogus)
 	{
 		cachedDialogue = ':red:sad:dialogue_moogus0\n'
 			+ ':bf:neutral:dialogue_moogus1\n'
@@ -612,9 +637,17 @@ public function readDialogue()
 	var txt = Paths.getPath('songs/' + safeSong + '/dialogue.txt', null, PathsTestMode.NORMAL);
 	dialogueList = CoolUtil.coolTextFile(txt);
 	#end
+	try PlayState.instance?.reportHtml5DialoguePhase('dialogueList loaded; lineCount=' + dialogueList.length + ', hasText=' + (cachedDialogue != null)) catch (phaseError:Dynamic) {}
+	if (dialogueList.length == 0 && isSussusMoogus)
+	{
+		// Last-resort built-in first-song dialogue if its cached text is empty.
+		dialogueList = getSussusMoogusDialogueFallback().split("\\n");
+		try PlayState.instance?.reportHtml5DialoguePhase('dialogueList empty; forced built-in Sussus Moogus dialogue; lineCount=' + dialogueList.length) catch (phaseError:Dynamic) {}
+	}
 	if (dialogueList.length == 0)
 	{
-		// A cutscene without dialogue must still release the song into gameplay.
+		try PlayState.instance?.reportHtml5DialoguePhase('readDialogue exited because dialogueList is empty; safeSong=' + safeSong) catch (phaseError:Dynamic) {}
+		try PlayState.instance?.reportHtml5Diagnostic('readDialogue exited with zero lines for song ' + safeSong) catch (diagnosticError:Dynamic) {}
 		startCountdown();
 		return;
 	}
@@ -627,6 +660,7 @@ public function readDialogue()
 	if (!repeatedCutscenes) PlayState.seenCutscene = true;
 	var naughty:Bool = true;
 	hasDialogue = true;
+	try PlayState.instance?.reportHtml5DialoguePhase('dialogue data accepted; beginning UI construction; lineCount=' + dialogueList.length) catch (phaseError:Dynamic) {}
 	
 	// For some stuff like Arabic
 	var rightLeft = Lang.hasSpecial('rightToLeft');
@@ -783,6 +817,7 @@ public function readDialogue()
 		icon.alpha = 1;
 		refreshDialogue();
 		dialogueUiReady = true;
+		try PlayState.instance?.markHtml5DialogueUiReady('refreshDialogue completed; first line=' + (dropText.text ?? '')) catch (phaseError:Dynamic) {}
 	}
 	catch (e:Dynamic)
 	{
