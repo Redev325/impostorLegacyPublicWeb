@@ -413,7 +413,7 @@ class PlayState extends MusicBeatState
 		final cleaned:String = StringTools.trim(StringTools.replace(StringTools.replace(message, "\r", " "), "\n", " "));
 		if (cleaned.length == 0 || html5DiagnosticMessages.contains(cleaned)) return;
 		html5DiagnosticMessages.push(cleaned);
-		while (html5DiagnosticMessages.length > 12) html5DiagnosticMessages.shift();
+		while (html5DiagnosticMessages.length > 40) html5DiagnosticMessages.shift();
 	}
 #end
 
@@ -1243,6 +1243,7 @@ class PlayState extends MusicBeatState
 	public function reportHtml5DialoguePhase(phase:String):Void
 	{
 		html5DialoguePhase = phase ?? 'Unknown phase';
+		PlayState.recordHtml5Diagnostic('Dialogue phase checkpoint: ' + html5DialoguePhase);
 	}
 
 	public function markHtml5DialogueUiReady(phase:String):Void
@@ -1369,7 +1370,7 @@ class PlayState extends MusicBeatState
 		var lines:Array<String> = [];
 		lines.push('Freeze detected: ' + shortenHtml5Diagnostic(reason, 90));
 		lines.push('Captured errors / load failures:');
-		final messageStart:Int = Std.int(Math.max(0, html5DiagnosticMessages.length - 8));
+		final messageStart:Int = Std.int(Math.max(0, html5DiagnosticMessages.length - 12));
 		if (html5DiagnosticMessages.length == 0)
 			lines.push(' - No runtime exception was captured before the timeout.');
 		else
@@ -1377,8 +1378,8 @@ class PlayState extends MusicBeatState
 			for (i in messageStart...html5DiagnosticMessages.length)
 				lines.push(' - ' + shortenHtml5Diagnostic(html5DiagnosticMessages[i], 96));
 		}
-		lines.push('Failing check: PlayState could not find the registered dialogue script.');
-		lines.push("Lookup: scripts.getScript('gameplay:assets/scripts/dialogue.hx')");
+		lines.push('Diagnostic target: follow the dialogue phase checkpoints and runtime errors below.');
+		lines.push("Script lookup: scripts.getScript('gameplay:assets/scripts/dialogue.hx')");
 		lines.push('Source: source/funkin/states/PlayState.hx, startHtml5SussusMoogusCutscene()');
 		lines.push('Loader/parse errors and source lines appear here when captured.');
 		lines.push('Press C or click COPY REPORT to copy all details. ENTER / ESC continues.');
@@ -1412,7 +1413,7 @@ class PlayState extends MusicBeatState
 			'EXPECTED DIALOGUE SCRIPT:',
 			'gameplay:assets/scripts/dialogue.hx',
 			'',
-			'FAILING LOOKUP:',
+			'SCRIPT LOOKUP CHECK:',
 			"scripts.getScript('gameplay:assets/scripts/dialogue.hx')",
 			'SOURCE: source/funkin/states/PlayState.hx',
 			'FUNCTION: startHtml5SussusMoogusCutscene()',
@@ -1424,8 +1425,8 @@ class PlayState extends MusicBeatState
 		];
 		for (message in PlayState.html5DiagnosticMessages) report.push('- ' + message);
 		report.push('');
-		report.push('Possible causes: dialogue.hx not listed by HTML5 asset enumeration, a parse/load error,');
-		report.push('or an unexpected library-qualified script name. Causes are confirmed only when logged above.');
+		report.push('Use the dialogue phase checkpoints to see how far readDialogue progressed.');
+		report.push('HScript parse/load and runtime exceptions are recorded with their message and source location when available.');
 		return report.join("\n");
 	}
 

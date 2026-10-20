@@ -187,6 +187,9 @@ class FunkinScript extends IrisEx implements IFlxDestroyable
 			__garbage = true;
 			lastErrorMessage = Std.string(e);
 			Logger.log('[${name}]: PARSING ERROR: $e', ERROR, false);
+			#if html5
+			PlayState.recordHtml5Diagnostic(formatPosInfos(name, 0, '[HScript parse/load error] ' + Std.string(e), 'ERROR: '));
+			#end
 		}
 		return ret;
 	}
@@ -221,7 +224,14 @@ class FunkinScript extends IrisEx implements IFlxDestroyable
 					// SReturn is HScript control flow. Other script exceptions are
 					// reported but must not freeze the entire HTML5 PlayState.
 					if (!isEscapedScriptReturn(e))
-						DebugTextPlugin.addText(formatPosInfos(name, 0, '[HScript runtime error] ' + Std.string(e), 'ERROR: '), FlxColor.RED);
+					{
+						final pos = interp != null ? interp.posInfos() : Iris.getDefaultPos(name);
+						final message:String = formatPosInfos(pos.fileName, pos.lineNumber, '[HScript runtime error] ' + Std.string(e), 'ERROR: ');
+						DebugTextPlugin.addText(message, FlxColor.RED);
+						#if html5
+						PlayState.recordHtml5Diagnostic(message);
+						#end
+					}
 				}
 				
 				for (key in defaultShit.keys())
