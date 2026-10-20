@@ -1005,6 +1005,75 @@ class PlayState extends MusicBeatState
 	#if html5
 	var html5SussusCutsceneStarted:Bool = false;
 	var html5VideoEndRecoveryAttempted:Bool = false;
+	var html5DomWatchdogTimer:Int = 0;
+	var html5DomWatchdogStartedAt:Float = 0;
+	var html5DomExpectedVideoEndAt:Float = -1;
+	var html5DomCallbackObservedAt:Float = -1;
+	var html5DomDiagnosticOverlay:Dynamic = null;
+
+	function stopHtml5DomWatchdog():Void
+	{
+		if (html5DomWatchdogTimer != 0)
+		{
+			Browser.window.clearInterval(html5DomWatchdogTimer);
+			html5DomWatchdogTimer = 0;
+		}
+	}
+
+	function startHtml5DomWatchdog():Void
+	{
+		stopHtml5DomWatchdog();
+		html5DomWatchdogStartedAt = Date.now();
+		html5DomExpectedVideoEndAt = -1;
+		html5DomCallbackObservedAt = -1;
+		html5DomWatchdogTimer = Browser.window.setInterval(function() {
+			try
+			{
+				if (!html5SussusCutsceneStarted || startedCountdown || html5DialogueUiReady)
+				{
+					stopHtml5DomWatchdog();
+					return;
+				}
+
+				final now:Float = Date.now();
+				final mediaLength:Float = Html5Video.getLength();
+				final mediaTime:Float = Html5Video.getTime();
+
+				// Begin a short end-of-video timeout while the DOM video is still
+				// available. It remains armed if the native end handler removes it.
+				if (html5DomExpectedVideoEndAt < 0 && mediaLength > 0 && mediaTime >= mediaLength - 1.25)
+				{
+					html5DomExpectedVideoEndAt = now + Math.max(0, mediaLength - mediaTime) * 1000;
+					PlayState.recordHtml5Diagnostic('Browser watchdog observed the video approaching its end at ' + mediaTime + '/' + mediaLength + ' seconds.');
+				}
+
+				var reason:Null<String> = null;
+				if (html5DomCallbackObservedAt > 0 && now - html5DomCallbackObservedAt >= 3500)
+					reason = 'Browser watchdog: the video-end callback ran, but dialogue UI/countdown did not become ready. Last phase: ' + html5DialoguePhase;
+				else if (html5DomExpectedVideoEndAt > 0 && now >= html5DomExpectedVideoEndAt + 2500)
+					reason = 'Browser watchdog: the video reached its end, but dialogue UI/countdown did not become ready. Last phase: ' + html5DialoguePhase;
+				else if (now - html5DomWatchdogStartedAt >= 90000)
+					reason = 'Browser watchdog timed out 90 seconds after the Sussus Moogus cutscene started. Last phase: ' + html5DialoguePhase;
+
+				if (reason != null)
+				{
+					PlayState.recordHtml5Diagnostic(reason);
+					stopHtml5DomWatchdog();
+					showHtml5FreezeDiagnostics(reason);
+					inCutscene = false;
+					seenCutscene = true;
+					songStartCallback = startCountdown;
+					try startCountdown() catch (e:Dynamic) {
+						PlayState.recordHtml5Diagnostic('Countdown recovery also failed: ' + Std.string(e));
+					}
+				}
+			}
+			catch (e:Dynamic)
+			{
+				PlayState.recordHtml5Diagnostic('Browser freeze watchdog polling failed: ' + Std.string(e));
+			}
+		}, 250);
+	}
 
 	function startHtml5SussusMoogusCutscene():Void
 	{
@@ -1018,6 +1087,7 @@ class PlayState extends MusicBeatState
 
 		final videoPath:String = 'assets/videos/week1/sussus-moogus.mp4';
 		final finishCutscene:Void->Void = function() {
+			html5DomCallbackObservedAt = Date.now();
 			// Native checkpoint: this proves the DOM video completion/error callback
 			// has actually fired, independently of any HScript bridge calls.
 			html5DialoguePhase = 'Native video end/error callback fired; scheduling handoff';
@@ -1127,6 +1197,7 @@ class PlayState extends MusicBeatState
 				startCountdown();
 		};
 
+		startHtml5DomWatchdog();
 		if (!Html5Video.play(videoPath, function() {
 			html5DialoguePhase = 'Intro video started; waiting for native end callback';
 			PlayState.recordHtml5Diagnostic('Sussus Moogus intro video started.');
@@ -1178,6 +1249,85 @@ class PlayState extends MusicBeatState
 	{
 		html5DialoguePhase = phase ?? 'Dialogue UI ready';
 		html5DialogueUiReady = true;
+		stopHtml5DomWatchdog();
+	}
+
+	function showHtml5DomFreezeDiagnostics(reason:String):Void
+	{
+		if (html5DomDiagnosticOverlay != null) return;
+
+		try
+		{
+			final overlay:Dynamic = Browser.document.createElement('div');
+			overlay.setAttribute('role', 'alertdialog');
+			overlay.setAttribute('aria-live', 'assertive');
+			overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483647;box-sizing:border-box;overflow:auto;background:#000;color:#ff3030;border:4px solid #ff2020;padding:18px;font-family:monospace;pointer-events:auto;';
+			
+			final heading:Dynamic = Browser.document.createElement('div');
+			heading.textContent = 'Error for week ' + (storyMeta.curWeek + 1) + ' - ' + (SONG?.song ?? 'unknown song');
+			heading.style.cssText = 'font-size:20px;font-weight:bold;margin:0 0 12px 0;color:#ff3030;';
+			overlay.appendChild(heading);
+
+			final message:Dynamic = Browser.document.createElement('div');
+			message.textContent = 'Freeze detected: ' + reason;
+			message.style.cssText = 'font-size:14px;line-height:1.5;margin:0 0 12px 0;white-space:pre-wrap;overflow-wrap:anywhere;';
+			overlay.appendChild(message);
+
+			final reportText:Dynamic = Browser.document.createElement('pre');
+			reportText.textContent = buildHtml5FreezeReport();
+			reportText.style.cssText = 'font-size:12px;line-height:1.35;white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%;color:#ff5555;margin:0 0 16px 0;';
+			overlay.appendChild(reportText);
+
+			final controls:Dynamic = Browser.document.createElement('div');
+			controls.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px;align-items:center;';
+			final copyButton:Dynamic = Browser.document.createElement('button');
+			copyButton.textContent = 'COPY REPORT';
+			copyButton.style.cssText = 'background:#111;color:#ff3030;border:2px solid #ff3030;padding:10px 14px;font: bold 14px monospace;cursor:pointer;';
+			final closeButton:Dynamic = Browser.document.createElement('button');
+			closeButton.textContent = 'DISMISS / CONTINUE';
+			closeButton.style.cssText = 'background:#111;color:#ff3030;border:2px solid #ff3030;padding:10px 14px;font:bold 14px monospace;cursor:pointer;';
+			final copyStatus:Dynamic = Browser.document.createElement('span');
+			copyStatus.textContent = 'The browser-level panel is active even if the game renderer stalls.';
+			copyStatus.style.cssText = 'font-size:12px;color:#ff5555;';
+
+			copyButton.onclick = function(_) {
+				final report:String = buildHtml5FreezeReport();
+				try
+				{
+					final textarea:Dynamic = Browser.document.createElement('textarea');
+					textarea.value = report;
+					textarea.setAttribute('readonly', 'readonly');
+					textarea.style.cssText = 'position:fixed;left:-10000px;top:0;';
+					Browser.document.body.appendChild(textarea);
+					textarea.focus();
+					textarea.select();
+					final copied:Bool = untyped Browser.document.execCommand('copy');
+					Browser.document.body.removeChild(textarea);
+					copyStatus.textContent = copied ? 'Copied report to clipboard.' : 'Copy did not work; select the report text above.';
+				}
+				catch (e:Dynamic)
+				{
+					copyStatus.textContent = 'Copy failed: ' + Std.string(e);
+				}
+				return false;
+			};
+
+			closeButton.onclick = function(_) {
+				dismissHtml5FreezeDiagnostics();
+				return false;
+			};
+
+			controls.appendChild(copyButton);
+			controls.appendChild(closeButton);
+			controls.appendChild(copyStatus);
+			overlay.appendChild(controls);
+			html5DomDiagnosticOverlay = overlay;
+			Browser.document.body.appendChild(overlay);
+		}
+		catch (e:Dynamic)
+		{
+			PlayState.recordHtml5Diagnostic('Could not create browser-level diagnostic overlay: ' + Std.string(e));
+		}
 	}
 
 	public function showHtml5FreezeDiagnostics(reason:String):Void
@@ -1185,6 +1335,8 @@ class PlayState extends MusicBeatState
 		if (html5DiagnosticVisible) return;
 		html5DiagnosticReason = reason;
 		html5DiagnosticVisible = true;
+		stopHtml5DomWatchdog();
+		showHtml5DomFreezeDiagnostics(reason);
 		camGame.visible = false;
 		camHUD.visible = false;
 		camOther.visible = true;
@@ -1324,6 +1476,16 @@ class PlayState extends MusicBeatState
 
 	function dismissHtml5FreezeDiagnostics():Void
 	{
+		if (html5DomDiagnosticOverlay != null)
+		{
+			final overlay:Dynamic = html5DomDiagnosticOverlay;
+			html5DomDiagnosticOverlay = null;
+			try
+			{
+				if (overlay.parentNode != null) overlay.parentNode.removeChild(overlay);
+			}
+			catch (e:Dynamic) {}
+		}
 		for (sprite in html5DiagnosticObjects)
 		{
 			remove(sprite, true);
