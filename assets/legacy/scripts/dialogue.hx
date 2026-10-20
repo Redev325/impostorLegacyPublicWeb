@@ -773,6 +773,25 @@ public function readDialogue()
 		obj.updateDefaultFormat();
 	}
 	
+#if html5
+	// Do not depend on FlxTimer.wait() to reveal the first dialogue line after
+	// the DOM video callback. Make the first line visible synchronously.
+	try
+	{
+		box.alpha = 1;
+		bubble.alpha = 1;
+		icon.alpha = 1;
+		refreshDialogue();
+		dialogueUiReady = true;
+	}
+	catch (e:Dynamic)
+	{
+		dialogueUiReady = false;
+		final message:String = 'Dialogue UI initialization exception for ' + (PlayState.SONG?.song ?? 'unknown song') + ': ' + Std.string(e);
+		trace('HTML5 dialogue UI initialization failed: ' + e);
+		try PlayState.instance?.reportHtml5Diagnostic(message) catch (diagnosticError:Dynamic) {}
+	}
+#else
 	FlxTimer.wait(0.5, function() {
 		try
 		{
@@ -786,17 +805,13 @@ public function readDialogue()
 		{
 			dialogueUiReady = false;
 			final message:String = 'Dialogue UI initialization exception for ' + (PlayState.SONG?.song ?? 'unknown song') + ': ' + Std.string(e);
-			trace('HTML5 dialogue UI initialization failed: ' + e);
-			#if html5
-			try PlayState.instance?.reportHtml5Diagnostic(message) catch (diagnosticError:Dynamic) {}
-			#end
+			trace('Dialogue UI initialization failed: ' + e);
 		}
 	});
+#end
 
-	#if html5
-	// Cover every week/song with dialogue, not only Sussus Moogus. If the UI
-	// timer above never produces the first dialogue line, show the same error
-	// screen and preserve the real exception messages captured so far.
+#if html5
+	// Keep a watchdog for a genuine synchronous UI initialization failure.
 	new FlxTimer().start(2.5, function(_) {
 		if (!hasDialogue || dialogueUiReady) return;
 		final reason:String = 'Dialogue UI for ' + (PlayState.SONG?.song ?? 'unknown song') + ' did not initialize within 2.5 seconds.';
@@ -810,7 +825,7 @@ public function readDialogue()
 			trace('Could not show HTML5 dialogue diagnostics: ' + e);
 		}
 	});
-	#end
+#end
 }
 
 function getAtt(ac:String)
