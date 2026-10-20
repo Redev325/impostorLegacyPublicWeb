@@ -90,7 +90,15 @@ class FunkinScript extends IrisEx implements IFlxDestroyable
 			// Do not surface it in the in-game error display.
 			if (FunkinScript.isEscapedScriptReturn(x)) return;
 			final prefix:String = ErrorSeverityTools.getPrefix(level);
-			
+
+			#if html5
+			if (level == ERROR || level == FATAL)
+			{
+				final diagnostic:String = formatPosInfos(pos.fileName, pos.lineNumber, '[HScript ' + prefix + '] ' + x, '');
+				PlayState.recordHtml5Diagnostic(diagnostic);
+			}
+			#end
+
 			DebugTextPlugin.addText(formatPosInfos(pos.fileName, pos.lineNumber, x, prefix == '' ? '' : '$prefix:'), Logger.getHexColourFromSeverity(Severity.fromIris(level)));
 			
 			Iris.logLevel(level, x, pos);

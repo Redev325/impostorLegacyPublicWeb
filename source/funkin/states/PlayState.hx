@@ -413,7 +413,7 @@ class PlayState extends MusicBeatState
 		final cleaned:String = StringTools.trim(StringTools.replace(StringTools.replace(message, "\r", " "), "\n", " "));
 		if (cleaned.length == 0 || html5DiagnosticMessages.contains(cleaned)) return;
 		html5DiagnosticMessages.push(cleaned);
-		while (html5DiagnosticMessages.length > 40) html5DiagnosticMessages.shift();
+		while (html5DiagnosticMessages.length > 60) html5DiagnosticMessages.shift();
 	}
 #end
 
@@ -1370,7 +1370,7 @@ class PlayState extends MusicBeatState
 		var lines:Array<String> = [];
 		lines.push('Freeze detected: ' + shortenHtml5Diagnostic(reason, 90));
 		lines.push('Captured errors / load failures:');
-		final messageStart:Int = Std.int(Math.max(0, html5DiagnosticMessages.length - 12));
+		final messageStart:Int = Std.int(Math.max(0, html5DiagnosticMessages.length - 24));
 		if (html5DiagnosticMessages.length == 0)
 			lines.push(' - No runtime exception was captured before the timeout.');
 		else

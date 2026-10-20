@@ -666,6 +666,7 @@ public function readDialogue()
 	var rightLeft = Lang.hasSpecial('rightToLeft');
 	var gLtR:FlxTextAlign = (rightLeft ? FlxTextAlign.RIGHT : FlxTextAlign.LEFT);
 	rtlMode = rightLeft;
+	try PlayState.instance?.reportHtml5DialoguePhase('UI checkpoint 1: language settings resolved; RTL=' + rightLeft) catch (phaseError:Dynamic) {}
 	
 	var textX:Float = rightLeft ? 300 : 350; // 325.85
 	
@@ -698,11 +699,13 @@ public function readDialogue()
 		FlxTween.tween(FlxG.sound.music, {volume: 0.8}, 1);
 		#end
 	}
+	try PlayState.instance?.reportHtml5DialoguePhase('UI checkpoint 2: dialogue audio setup passed') catch (phaseError:Dynamic) {}
 	
 	bgFade = new FlxSprite(-200, -200).makeScaledGraphic(Std.int(FlxG.width * 1.3), Std.int(FlxG.height * 1.3), 0xFFFFFFFF);
 	bgFade.camera = camHUD;
 	bgFade.alpha = 0;
 	addDialogueObject(bgFade);
+	try PlayState.instance?.reportHtml5DialoguePhase('UI checkpoint 3: background fade added') catch (phaseError:Dynamic) {}
 	
 	FlxTween.tween(bgFade, {alpha: 0.35}, 0.8, {ease: FlxEase.circIn});
 	
@@ -710,9 +713,11 @@ public function readDialogue()
 	boxGroup = new FlxSpriteGroup();
 	boxGroup.camera = camHUD;
 	addDialogueObject(boxGroup);
+	try PlayState.instance?.reportHtml5DialoguePhase('UI checkpoint 4: dialogue sprite group created') catch (phaseError:Dynamic) {}
 	
 	// Dialgoue box
 	box = new funkin.objects.RGBSprite(0, 431).loadGraphic(Paths.image('ui/dialogue/dialogueBox'));
+	try PlayState.instance?.reportHtml5DialoguePhase('UI checkpoint 5: dialogue box graphic loaded') catch (phaseError:Dynamic) {}
 	box.screenCenter(FlxAxes.X);
 	box.x = Math.round(box.x);
 	box.rgbGraphics.setColors([0xFFFF1515, 0xFF666666, 0xFF7D0058]);
@@ -738,6 +743,7 @@ public function readDialogue()
 	portrait.push(boxGroup.add(port0));
 	portrait.push(boxGroup.add(port1));
 	portrait.push(boxGroup.add(port2));
+	try PlayState.instance?.reportHtml5DialoguePhase('UI checkpoint 6: character portraits created') catch (phaseError:Dynamic) {}
 	
 	boxGroup.add(box);
 	
@@ -749,12 +755,14 @@ public function readDialogue()
 		i.x = Math.round(i.x + 18.5); // fuck it
 		boxGroup.add(i);
 	}
+	try PlayState.instance?.reportHtml5DialoguePhase('UI checkpoint 7: dialogue bubbles loaded') catch (phaseError:Dynamic) {}
 	
 	icon = new HealthIcon('red', false);
 	icon.setPosition(rightLeft ? 920 : 220, (bubble.getMidpoint().y - 75));
 	icon.setGraphicSize(Std.int(icon.width * 0.7));
 	icon.updateHitbox();
 	boxGroup.add(icon);
+	try PlayState.instance?.reportHtml5DialoguePhase('UI checkpoint 8: character icon created') catch (phaseError:Dynamic) {}
 	
 	swagDialogue = new FlxTypeText(textX, 0, Std.int(FlxG.width * 0.5), "", 28);
 	swagDialogue.setFormat(Paths.font("liber.ttf"), 26, FlxColor.BLACK, gLtR);
@@ -777,6 +785,7 @@ public function readDialogue()
 	rtlWrapMeasure.setFormat(Paths.font("liber.ttf"), 26, FlxColor.BLACK, gLtR);
 	rtlWrapMeasure.textField.wordWrap = true;
 	rtlWrapMeasure.textField.multiline = true;
+	try PlayState.instance?.reportHtml5DialoguePhase('UI checkpoint 9: primary dialogue text fields created') catch (phaseError:Dynamic) {}
 	
 	// old version of everything
 	icon_old = new HealthIcon('red', false);
@@ -806,6 +815,7 @@ public function readDialogue()
 		obj._defaultFormat.leading = (Lang.getFlag('dialogueLeading') ?? 0);
 		obj.updateDefaultFormat();
 	}
+	try PlayState.instance?.reportHtml5DialoguePhase('UI checkpoint 10: legacy dialogue text fields and formats created') catch (phaseError:Dynamic) {}
 	
 #if html5
 	// Do not depend on FlxTimer.wait() to reveal the first dialogue line after
@@ -815,7 +825,9 @@ public function readDialogue()
 		box.alpha = 1;
 		bubble.alpha = 1;
 		icon.alpha = 1;
+		try PlayState.instance?.reportHtml5DialoguePhase('UI checkpoint 11: about to refresh first dialogue line') catch (phaseError:Dynamic) {}
 		refreshDialogue();
+		try PlayState.instance?.reportHtml5DialoguePhase('UI checkpoint 12: refreshDialogue returned') catch (phaseError:Dynamic) {}
 		dialogueUiReady = true;
 		try PlayState.instance?.markHtml5DialogueUiReady('refreshDialogue completed; first line=' + (dropText.text ?? '')) catch (phaseError:Dynamic) {}
 	}
