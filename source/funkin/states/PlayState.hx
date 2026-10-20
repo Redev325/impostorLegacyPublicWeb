@@ -1004,12 +1004,14 @@ class PlayState extends MusicBeatState
 	
 	#if html5
 	var html5SussusCutsceneStarted:Bool = false;
+	var html5VideoEndRecoveryAttempted:Bool = false;
 
 	function startHtml5SussusMoogusCutscene():Void
 	{
 		if (html5SussusCutsceneStarted || seenCutscene || !isStoryMode) return;
 		html5DialogueUiReady = false;
 		html5DialoguePhase = 'Waiting for Sussus Moogus intro video to end';
+		html5VideoEndRecoveryAttempted = false;
 		html5SussusCutsceneStarted = true;
 		inCutscene = true;
 		songStartCallback = () -> {};
@@ -1020,7 +1022,6 @@ class PlayState extends MusicBeatState
 			// has actually fired, independently of any HScript bridge calls.
 			html5DialoguePhase = 'Native video end/error callback fired; scheduling handoff';
 			PlayState.recordHtml5Diagnostic('Native video completion callback fired.');
-			new FlxTimer().start(0, function(_) {
 				html5DialoguePhase = 'Deferred native handoff callback running';
 				final dialogueScript:Null<FunkinScript> = scripts.getScript('gameplay:assets/scripts/dialogue.hx');
 				PlayState.recordHtml5Diagnostic('Dialogue script found after video: ' + (dialogueScript != null));
@@ -1124,12 +1125,18 @@ class PlayState extends MusicBeatState
 				// The intro temporarily replaces it with a no-op while the video runs.
 				songStartCallback = startCountdown;
 				startCountdown();
-			});
 		};
 
-		if (!Html5Video.play(videoPath, function() {}, finishCutscene, finishCutscene))
+		if (!Html5Video.play(videoPath, function() {
+			html5DialoguePhase = 'Intro video started; waiting for native end callback';
+			PlayState.recordHtml5Diagnostic('Sussus Moogus intro video started.');
+		}, finishCutscene, finishCutscene))
 		{
+			html5DialoguePhase = 'Html5Video.play returned false before the intro started';
+			PlayState.recordHtml5Diagnostic('HTML5 intro video could not start: Html5Video.play returned false.');
+			showHtml5FreezeDiagnostics(html5DialoguePhase);
 			inCutscene = false;
+			songStartCallback = startCountdown;
 			startCountdown();
 		}
 	}
@@ -2390,6 +2397,31 @@ class PlayState extends MusicBeatState
 	override public function update(elapsed:Float):Void
 	{
 		#if html5
+		// DOM media events and haxe.Timer can both miss the final callback on some
+		// browsers. Check the actual media clock from the frame loop as a fallback.
+		if (html5SussusCutsceneStarted && !html5VideoEndRecoveryAttempted && !startedCountdown && !html5DialogueUiReady)
+		{
+			final mediaLength:Float = Html5Video.getLength();
+			final mediaTime:Float = Html5Video.getTime();
+			if (mediaLength > 0 && mediaTime >= mediaLength - 0.12)
+			{
+				html5VideoEndRecoveryAttempted = true;
+				html5DialoguePhase = 'PlayState frame loop detected final video frame; forcing completion callback';
+				PlayState.recordHtml5Diagnostic('Frame-loop fallback detected video completion at ' + mediaTime + '/' + mediaLength + ' seconds.');
+				Html5Video.skip();
+				// If no native callback was registered, show diagnostics and release
+				// the song rather than preserving a frozen-looking stage.
+				if (html5DialoguePhase == 'PlayState frame loop detected final video frame; forcing completion callback')
+				{
+					final reason:String = 'Video reached its final frame but no completion callback ran.';
+					PlayState.recordHtml5Diagnostic(reason);
+					showHtml5FreezeDiagnostics(reason);
+					inCutscene = false;
+					songStartCallback = startCountdown;
+					startCountdown();
+				}
+			}
+		}
 		if (html5DiagnosticVisible)
 		{
 			if (FlxG.keys.justPressed.C)
