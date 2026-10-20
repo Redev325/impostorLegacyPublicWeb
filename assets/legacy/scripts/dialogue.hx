@@ -379,8 +379,14 @@ function speakerAnims(char:String = 'bf')
 **/
 function refreshDialogue(?oldToo = false)
 {
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue entered; listLength=' + (dialogueList == null ? -1 : dialogueList.length)) catch (phaseError:Dynamic) {}
+	#end
 	if (dialogueList == null || dialogueList.length == 0)
 	{
+		#if html5
+		try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue found no lines; ending dialogue') catch (phaseError:Dynamic) {}
+		#end
 		dialogueEnded = true;
 		goodBialogue();
 		return;
@@ -421,14 +427,26 @@ function refreshDialogue(?oldToo = false)
 	
 	if (entry.length == 0)
 	{
+		#if html5
+		try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue found only empty lines; ending dialogue') catch (phaseError:Dynamic) {}
+		#end
 		dialogueList.resize(0);
 		goodBialogue();
 		return;
 	}
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue normalized first entry; length=' + entry.length + ', prefix=' + entry.substr(0, entry.length > 48 ? 48 : entry.length)) catch (phaseError:Dynamic) {}
+	#end
 	
 	var splitName:Array<String> = entry.split(":");
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue split first entry; fields=' + splitName.length) catch (phaseError:Dynamic) {}
+	#end
 	if (splitName.length < 3)
 	{
+		#if html5
+		try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue discarded malformed first entry; fields=' + splitName.length) catch (phaseError:Dynamic) {}
+		#end
 		// Ignore malformed dialogue entries instead of indexing missing speaker,
 		// emote, or text fields.
 		dialogueList.remove(dialogueList[0]);
@@ -475,6 +493,9 @@ function refreshDialogue(?oldToo = false)
 		? Lang.str(dialogueText)
 		: dialogueText;
 	var line:String = localizedLine ?? dialogueText;
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue speaker ready; side=' + curSide + ', character=' + curCharacter + ', textLength=' + line.length) catch (phaseError:Dynamic) {}
+	#end
 	
 	if (rtlMode)
 	{
@@ -483,13 +504,22 @@ function refreshDialogue(?oldToo = false)
 	}
 	swagDialogue.text = line;
 	swagDialogue.scale.y = getSquish(swagDialogue);
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue text fields assigned and primary text scaled') catch (phaseError:Dynamic) {}
+	#end
 	if (rtlMode)
 	{
 		rtlDisplayText.scale.y = swagDialogue.scale.y;
 		rtlDisplayText.text = '';
 	}
 	swagDialogue.resetText(line);
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue typewriter resetText completed') catch (phaseError:Dynamic) {}
+	#end
 	swagDialogue.start(0.05, true);
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue typewriter started') catch (phaseError:Dynamic) {}
+	#end
 	
 	var who = portrait[curSide];
 	
@@ -501,7 +531,11 @@ function refreshDialogue(?oldToo = false)
 	catch (e:Dynamic)
 	{
 		trace('HTML5 dialogue portrait animation setup failed: ' + e);
+		try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue portrait animation setup failed: ' + Std.string(e)) catch (phaseError:Dynamic) {}
 	}
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue portrait animation setup finished') catch (phaseError:Dynamic) {}
+	#end
 	
 	swagDialogue.completeCallback = function() {
 		dialogueEnded = true;
@@ -522,8 +556,14 @@ function refreshDialogue(?oldToo = false)
 			}
 		});
 	};
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue completion callback configured') catch (phaseError:Dynamic) {}
+	#end
 	
 	dialogueList.remove(dialogueList[0]);
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue finished; remainingLines=' + dialogueList.length) catch (phaseError:Dynamic) {}
+	#end
 }
 
 /**
