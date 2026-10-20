@@ -1023,7 +1023,7 @@ class PlayState extends MusicBeatState
 	function startHtml5DomWatchdog():Void
 	{
 		stopHtml5DomWatchdog();
-		html5DomWatchdogStartedAt = Date.now();
+		html5DomWatchdogStartedAt = Browser.window.performance.now();
 		html5DomExpectedVideoEndAt = -1;
 		html5DomCallbackObservedAt = -1;
 		html5DomWatchdogTimer = Browser.window.setInterval(function() {
@@ -1035,7 +1035,7 @@ class PlayState extends MusicBeatState
 					return;
 				}
 
-				final now:Float = Date.now();
+				final now:Float = Browser.window.performance.now();
 				final mediaLength:Float = Html5Video.getLength();
 				final mediaTime:Float = Html5Video.getTime();
 
@@ -1087,7 +1087,7 @@ class PlayState extends MusicBeatState
 
 		final videoPath:String = 'assets/videos/week1/sussus-moogus.mp4';
 		final finishCutscene:Void->Void = function() {
-			html5DomCallbackObservedAt = Date.now();
+			html5DomCallbackObservedAt = Browser.window.performance.now();
 			// Native checkpoint: this proves the DOM video completion/error callback
 			// has actually fired, independently of any HScript bridge calls.
 			html5DialoguePhase = 'Native video end/error callback fired; scheduling handoff';
