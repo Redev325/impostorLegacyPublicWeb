@@ -1016,8 +1016,14 @@ class PlayState extends MusicBeatState
 
 		final videoPath:String = 'assets/videos/week1/sussus-moogus.mp4';
 		final finishCutscene:Void->Void = function() {
+			// Native checkpoint: this proves the DOM video completion/error callback
+			// has actually fired, independently of any HScript bridge calls.
+			html5DialoguePhase = 'Native video end/error callback fired; scheduling handoff';
+			PlayState.recordHtml5Diagnostic('Native video completion callback fired.');
 			new FlxTimer().start(0, function(_) {
+				html5DialoguePhase = 'Deferred native handoff callback running';
 				final dialogueScript:Null<FunkinScript> = scripts.getScript('gameplay:assets/scripts/dialogue.hx');
+				PlayState.recordHtml5Diagnostic('Dialogue script found after video: ' + (dialogueScript != null));
 				if (dialogueScript != null && dialogueScript.exists('finishHtml5SussusMoogusIntro'))
 				{
 					try
@@ -1035,7 +1041,27 @@ class PlayState extends MusicBeatState
 						camHUD.visible = true;
 						camOther.visible = true;
 						// PlayState already deferred this callback from the DOM video event, so avoid a second timer.
+						html5DialoguePhase = 'Calling finishHtml5SussusMoogusIntro';
 						dialogueScript.call('finishHtml5SussusMoogusIntro', []);
+						var hasDialogueAfterFinish:Bool = dialogueScript.get('hasDialogue') == true;
+						var uiReadyAfterFinish:Bool = dialogueScript.get('dialogueUiReady') == true;
+						html5DialoguePhase = 'HScript finish callback returned; hasDialogue=' + hasDialogueAfterFinish + ', uiReady=' + uiReadyAfterFinish;
+						PlayState.recordHtml5Diagnostic('HScript intro handoff returned; hasDialogue=' + hasDialogueAfterFinish + ', uiReady=' + uiReadyAfterFinish);
+
+						// If the wrapper call returned without entering readDialogue, retry
+						// its public entry point once under the known Story Mode state.
+						if (!hasDialogueAfterFinish && !uiReadyAfterFinish)
+						{
+							html5DialoguePhase = 'Intro callback returned without dialogue; retrying readDialogue directly';
+							PlayState.recordHtml5Diagnostic('Calling readDialogue directly because the intro helper did not set hasDialogue.');
+							seenCutscene = false;
+							dialogueScript.set('videoCheckStory', false);
+							dialogueScript.call('readDialogue', []);
+							hasDialogueAfterFinish = dialogueScript.get('hasDialogue') == true;
+							uiReadyAfterFinish = dialogueScript.get('dialogueUiReady') == true;
+							html5DialoguePhase = 'Direct readDialogue returned; hasDialogue=' + hasDialogueAfterFinish + ', uiReady=' + uiReadyAfterFinish;
+							PlayState.recordHtml5Diagnostic('Direct readDialogue returned; hasDialogue=' + hasDialogueAfterFinish + ', uiReady=' + uiReadyAfterFinish);
+						}
 
 						// Check the actual UI after its 0.5-second construction delay.
 						// If it never becomes ready, clean partial visuals and force the
@@ -1051,6 +1077,13 @@ class PlayState extends MusicBeatState
 								+ ' Last phase: ' + html5DialoguePhase;
 							PlayState.recordHtml5Diagnostic('Dialogue phase at timeout: ' + html5DialoguePhase);
 							PlayState.recordHtml5Diagnostic('Dialogue readiness flags: native=' + html5DialogueUiReady + ', script=' + scriptFlagReady);
+							if (currentDialogue != null)
+							{
+								PlayState.recordHtml5Diagnostic('Script flags at timeout: hasDialogue=' + (currentDialogue.get('hasDialogue') == true) + ', vidPlaying=' + (currentDialogue.get('vidPlaying') == true) + ', dialogueAfter=' + (currentDialogue.get('dialogueAfter') == true));
+								final lineData:Dynamic = currentDialogue.get('dialogueList');
+								if (Std.isOfType(lineData, Array))
+									PlayState.recordHtml5Diagnostic('Dialogue list lines at timeout: ' + (cast lineData:Array<Dynamic>).length);
+							}
 							showHtml5FreezeDiagnostics(reason);
 							try currentDialogue?.call('abandonHtml5SussusMoogusIntro', []) catch (e:Dynamic) {
 								PlayState.recordHtml5Diagnostic('Dialogue cleanup failed: ' + Std.string(e));
@@ -1069,6 +1102,12 @@ class PlayState extends MusicBeatState
 						showHtml5FreezeDiagnostics(reason);
 						trace('HTML5 Sussus Moogus dialogue handoff error: ' + e);
 					}
+				}
+
+				if (dialogueScript != null && !dialogueScript.exists('finishHtml5SussusMoogusIntro'))
+				{
+					html5DialoguePhase = 'Dialogue script exists but does not expose finishHtml5SussusMoogusIntro';
+					PlayState.recordHtml5Diagnostic('Dialogue script exists but is missing the expected intro function.');
 				}
 
 				if (dialogueScript == null || !dialogueScript.exists('finishHtml5SussusMoogusIntro'))
