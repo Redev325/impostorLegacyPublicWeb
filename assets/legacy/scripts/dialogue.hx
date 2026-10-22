@@ -353,13 +353,25 @@ function speakerAnims(char:String = 'bf')
 		#if html5
 		try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims about to cache parsed character data') catch (phaseError:Dynamic) {}
 		#end
-		// Use Map.set explicitly: HScript's array-access write on StringMap can
-		// fail to resolve correctly in the JavaScript interpreter.
-		charMap.set(char, dialogueChar);
-		loadUp = true;
+		// Character caching is only an optimization. Some HScript/JavaScript
+		// combinations can fail when writing a Haxe StringMap; do not let that
+		// optional cache operation abort creation of the dialogue portrait.
 		#if html5
-		try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims cached character data') catch (phaseError:Dynamic) {}
+		var cacheWriteSucceeded:Bool = false;
+		try
+		{
+			charMap.set(char, dialogueChar);
+			cacheWriteSucceeded = true;
+		}
+		catch (cacheError:Dynamic)
+		{
+			try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims character cache write failed; continuing without cache: ' + Std.string(cacheError)) catch (phaseError:Dynamic) {}
+		}
+		try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims cache write finished; succeeded=' + cacheWriteSucceeded) catch (phaseError:Dynamic) {}
+		#else
+		charMap[char] = dialogueChar;
 		#end
+		loadUp = true;
 	}
 	
 	curSide = dialogueChar.side;
