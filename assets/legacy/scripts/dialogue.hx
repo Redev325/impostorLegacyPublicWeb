@@ -345,24 +345,67 @@ function speakerAnims(char:String = 'bf')
 		#end
 		if (dialogueChar == null)
 		{
+			#if html5
+			try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims parsed null character data; returning current portrait') catch (phaseError:Dynamic) {}
+			#end
 			return portrait[curSide];
 		}
-		charMap[char] = dialogueChar;
+		#if html5
+		try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims about to cache parsed character data') catch (phaseError:Dynamic) {}
+		#end
+		// Use Map.set explicitly: HScript's array-access write on StringMap can
+		// fail to resolve correctly in the JavaScript interpreter.
+		charMap.set(char, dialogueChar);
 		loadUp = true;
+		#if html5
+		try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims cached character data') catch (phaseError:Dynamic) {}
+		#end
 	}
 	
 	curSide = dialogueChar.side;
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims read side=' + curSide) catch (phaseError:Dynamic) {}
+	#end
 	curSound = dialogueChar.sound;
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims read sound=' + curSound) catch (phaseError:Dynamic) {}
+	#end
 	curIcon = dialogueChar.icon;
-	box.rgbGraphics.setColors([dialogueColorFromString(dialogueChar.boxColor), 0xFF666666, dialogueColorFromString(dialogueChar.boxShadeColor)]);
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims read icon=' + curIcon) catch (phaseError:Dynamic) {}
+	#end
+	final primaryBoxColor:Int = dialogueColorFromString(dialogueChar.boxColor);
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims parsed primary box color') catch (phaseError:Dynamic) {}
+	#end
+	final shadeBoxColor:Int = dialogueColorFromString(dialogueChar.boxShadeColor);
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims parsed shade box color') catch (phaseError:Dynamic) {}
+	#end
+	box.rgbGraphics.setColors([primaryBoxColor, 0xFF666666, shadeBoxColor]);
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims applied dialogue box colors') catch (phaseError:Dynamic) {}
+	#end
 	
 	var who:FunkinSprite = portrait[curSide];
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims selected portrait; null=' + (who == null) + ', loadUp=' + loadUp) catch (phaseError:Dynamic) {}
+	#end
 	if (loadUp)
 	{
+		#if html5
+		try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims before portrait atlas load; asset=' + dialogueChar.asset) catch (phaseError:Dynamic) {}
+		#end
 		who.loadAtlas('ui/dialogue/characters/${dialogueChar.asset}');
+		#if html5
+		try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims portrait atlas loaded') catch (phaseError:Dynamic) {}
+		#end
 		
 		for (b in dialogueChar.animations)
 		{
+			#if html5
+			try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims animation entry=' + b.anim) catch (phaseError:Dynamic) {}
+			#end
 			if (b.loop)
 			{
 				who.addOffset('${b.anim}-loop', b.offsets[0], b.offsets[1]);
@@ -376,9 +419,15 @@ function speakerAnims(char:String = 'bf')
 		who.animation.onFinish.add(function(anim:String) {
 			if (who.hasAnim('$anim-loop')) who.playAnim('$anim-loop', true);
 		});
+		#if html5
+		try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims all portrait animations registered') catch (phaseError:Dynamic) {}
+		#end
 	}
 	
 	boxChar = Lang.str(dialogueChar.name, dialogueChar.name);
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims resolved localized character label') catch (phaseError:Dynamic) {}
+	#end
 	return who;
 }
 
