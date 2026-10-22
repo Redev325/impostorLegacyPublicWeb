@@ -177,6 +177,7 @@ public function finishHtml5SussusMoogusIntro():Void
 	if (skipText != null) skipText.visible = false;
 
 	PlayState.seenCutscene = false;
+	dialogueAfter = true;
 	hasDialogue = false;
 	dialogueEnded = false;
 	try PlayState.instance?.reportHtml5DialoguePhase('Intro handoff entered finishHtml5SussusMoogusIntro') catch (phaseError:Dynamic) {}
@@ -729,9 +730,15 @@ function getSussusMoogusDialogueFallback():String
 public function readDialogue()
 {
 	try PlayState.instance?.reportHtml5DialoguePhase('readDialogue entered; activeSong=' + (PlayState.SONG?.song ?? 'unknown')) catch (phaseError:Dynamic) {}
-	if ((videoCheckStory && !PlayState.isStoryMode) || PlayState.seenCutscene)
+	final forceFirstSongIntroDialogue:Bool = dialogueAfter && !vidPlaying && PlayState.isStoryMode
+		&& (Paths.sanitize(PlayState.SONG?.song ?? '').toLowerCase() == 'sussus-moogus');
+	try PlayState.instance?.reportHtml5DialoguePhase('readDialogue gate state; videoCheckStory=' + videoCheckStory + ', storyMode=' + PlayState.isStoryMode + ', seenCutscene=' + PlayState.seenCutscene + ', dialogueAfter=' + dialogueAfter + ', vidPlaying=' + vidPlaying + ', forceIntro=' + forceFirstSongIntroDialogue) catch (phaseError:Dynamic) {}
+	// The native HTML5 intro has already completed before this special handoff.
+	// A stale seenCutscene flag must not silently skip its required dialogue.
+	if (forceFirstSongIntroDialogue) PlayState.seenCutscene = false;
+	if (((videoCheckStory && !PlayState.isStoryMode) || PlayState.seenCutscene) && !forceFirstSongIntroDialogue)
 	{
-		try PlayState.instance?.reportHtml5DialoguePhase('readDialogue exited at story/cutscene guard; videoCheckStory=' + videoCheckStory + ', storyMode=' + PlayState.isStoryMode + ', seenCutscene=' + PlayState.seenCutscene) catch (phaseError:Dynamic) {}
+		try PlayState.instance?.reportHtml5DialoguePhase('readDialogue exited at story/cutscene guard; videoCheckStory=' + videoCheckStory + ', storyMode=' + PlayState.isStoryMode + ', seenCutscene=' + PlayState.seenCutscene + ', forceIntro=' + forceFirstSongIntroDialogue) catch (phaseError:Dynamic) {}
 		startCountdown();
 		return;
 	}
