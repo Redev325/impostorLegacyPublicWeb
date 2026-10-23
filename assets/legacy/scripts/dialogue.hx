@@ -578,10 +578,24 @@ function refreshDialogue(?oldToo = false)
 	var textStart:Int = curCharacter.length + 3 + curEmote.length;
 	var dialogueText:String = textStart < entry.length ? entry.substr(textStart).trim() : '';
 	
-	// Preserve localized dialogue keys, but never pass null into StringTools.
-	var localizedLine:Null<String> = StringTools.contains(dialogueText, 'dialogue_')
-		? Lang.str(dialogueText)
-		: dialogueText;
+	// Use String.indexOf instead of StringTools.contains here. The HTML5
+	// HScript runtime does not expose StringTools.contains through reflection.
+	var isLocalizationKey:Bool = dialogueText != null && dialogueText.indexOf('dialogue_') >= 0;
+	var localizedLine:Null<String> = dialogueText;
+	if (isLocalizationKey)
+	{
+		try
+		{
+			localizedLine = Lang.str(dialogueText);
+		}
+		catch (localizationError:Dynamic)
+		{
+			#if html5
+			try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue localization lookup failed; using key text: ' + Std.string(localizationError)) catch (phaseError:Dynamic) {}
+			#end
+			localizedLine = dialogueText;
+		}
+	}
 	var line:String = localizedLine ?? dialogueText;
 	#if html5
 	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue speaker ready; side=' + curSide + ', character=' + curCharacter + ', textLength=' + line.length) catch (phaseError:Dynamic) {}
@@ -593,7 +607,20 @@ function refreshDialogue(?oldToo = false)
 		rtlDisplayText.text = line;
 	}
 	swagDialogue.text = line;
-	swagDialogue.scale.y = getSquish(swagDialogue);
+	#if html5
+	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue assigned first dialogue text; about to measure text') catch (phaseError:Dynamic) {}
+	#end
+	try
+	{
+		swagDialogue.scale.y = getSquish(swagDialogue);
+	}
+	catch (scaleError:Dynamic)
+	{
+		swagDialogue.scale.y = 1;
+		#if html5
+		try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue text scaling failed; using scale 1: ' + Std.string(scaleError)) catch (phaseError:Dynamic) {}
+		#end
+	}
 	#if html5
 	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue text fields assigned and primary text scaled') catch (phaseError:Dynamic) {}
 	#end
@@ -602,14 +629,29 @@ function refreshDialogue(?oldToo = false)
 		rtlDisplayText.scale.y = swagDialogue.scale.y;
 		rtlDisplayText.text = '';
 	}
-	swagDialogue.resetText(line);
 	#if html5
-	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue typewriter resetText completed') catch (phaseError:Dynamic) {}
+	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue before typewriter resetText') catch (phaseError:Dynamic) {}
 	#end
-	swagDialogue.start(0.05, true);
-	#if html5
-	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue typewriter started') catch (phaseError:Dynamic) {}
-	#end
+	try
+	{
+		swagDialogue.resetText(line);
+		#if html5
+		try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue typewriter resetText completed') catch (phaseError:Dynamic) {}
+		#end
+		swagDialogue.start(0.05, true);
+		#if html5
+		try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue typewriter started') catch (phaseError:Dynamic) {}
+		#end
+	}
+	catch (typewriterError:Dynamic)
+	{
+		// The text itself is already assigned and remains readable even if
+		// FlxTypeText cannot initialize its HTML5 animation.
+		swagDialogue.visible = true;
+		#if html5
+		try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue typewriter failed; keeping static text visible: ' + Std.string(typewriterError)) catch (phaseError:Dynamic) {}
+		#end
+	}
 	
 	var who = portrait[curSide];
 	
@@ -1070,7 +1112,23 @@ function formatArabicDialogueText(source:String):String
 **/
 function getSquish(text)
 {
-	return Math.min(67 / text.textField.textHeight, 1);
+	// HTML5 text metrics can be unavailable during the first synchronous
+	// render tick. Keep the dialogue usable rather than aborting the UI setup.
+	try
+	{
+		if (text == null || text.textField == null) return 1;
+		var measuredHeight:Float = text.textField.textHeight;
+		if (measuredHeight <= 0) return 1;
+		var scale:Float = 67 / measuredHeight;
+		return scale < 1 ? scale : 1;
+	}
+	catch (squishError:Dynamic)
+	{
+		#if html5
+		try PlayState.instance?.reportHtml5DialoguePhase('getSquish measurement unavailable; using scale 1: ' + Std.string(squishError)) catch (phaseError:Dynamic) {}
+		#end
+		return 1;
+	}
 }
 
 /** 
