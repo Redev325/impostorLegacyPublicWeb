@@ -439,9 +439,13 @@ function speakerAnims(char:String = 'bf')
 	
 	boxChar = Lang.str(dialogueChar.name, dialogueChar.name);
 	#if html5
-	try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims resolved localized character label') catch (phaseError:Dynamic) {}
+	try PlayState.instance?.reportHtml5DialoguePhase('speakerAnims completed character setup; portrait remains in shared portrait array') catch (phaseError:Dynamic) {}
 	#end
+	// Do not return the FlxSprite through a nested HScript function call on
+	// HTML5. The caller can safely read portrait[curSide] from shared state.
+	#if !html5
 	return who;
+	#end
 }
 
 /**
@@ -660,9 +664,12 @@ function v4SpeakerShit()
 	#if html5
 	try PlayState.instance?.reportHtml5DialoguePhase('v4SpeakerShit entered; character=' + curCharacter) catch (phaseError:Dynamic) {}
 	#end
-	var speaker:FlxSprite = speakerAnims(curCharacter);
+	speakerAnims(curCharacter);
+	// speakerAnims updates curSide and the portrait array directly. Reading the
+	// selected sprite here avoids an object return across the HTML5 HScript call.
+	var speaker:FlxSprite = portrait[curSide];
 	#if html5
-	try PlayState.instance?.reportHtml5DialoguePhase('v4SpeakerShit speaker lookup returned; null=' + (speaker == null)) catch (phaseError:Dynamic) {}
+	try PlayState.instance?.reportHtml5DialoguePhase('v4SpeakerShit speaker lookup returned; null=' + (speaker == null) + ', side=' + curSide) catch (phaseError:Dynamic) {}
 	#end
 	swagDialogue.sounds = [FlxG.sound.load(Paths.sound('dialogue/' + curSound), 0.6)];
 	#if html5
