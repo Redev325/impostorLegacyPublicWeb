@@ -1427,7 +1427,7 @@ class PlayState extends MusicBeatState
 		addHtml5FallbackDialogueObject(html5FallbackLine);
 
 		html5FallbackHint = new FlxText(34, FlxG.height - 34, FlxG.width - 68, '', 15);
-		html5FallbackHint.setFormat(Paths.DEFAULT_FONT, 15, FlxColor.LIGHTGRAY, LEFT);
+		html5FallbackHint.setFormat(Paths.DEFAULT_FONT, 15, 0xFFD3D3D3, LEFT);
 		addHtml5FallbackDialogueObject(html5FallbackHint);
 
 		updateHtml5FallbackDialogueLine();
