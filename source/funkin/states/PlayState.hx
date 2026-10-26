@@ -1536,7 +1536,7 @@ class PlayState extends MusicBeatState
 
 		if (html5FallbackDialogueLines.length == 0)
 		{
-			html5FallbackDialogueLines.push({speaker: 'RED', text: 'Sussus Moogus'});
+			html5FallbackDialogueLines.push({speaker: 'RED', character: 'red', emote: 'sad', text: 'Sussus Moogus'});
 			PlayState.recordHtml5Diagnostic('Native fallback had no parseable dialogue lines; displaying emergency text.');
 		}
 
