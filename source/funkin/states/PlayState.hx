@@ -15,6 +15,7 @@ import flixel.group.FlxGroup.FlxTypedGroup;
 import flixel.math.FlxPoint;
 import flixel.tweens.FlxEase;
 import flixel.util.FlxColor;
+import flixel.util.FlxAxes;
 import flixel.util.FlxSort;
 import flixel.util.FlxTimer;
 import flixel.text.FlxText;
@@ -1342,12 +1343,11 @@ class PlayState extends MusicBeatState
 				final resetValue:Dynamic = Reflect.field(animation, 'reset');
 				portrait.addAnimByPrefix(anim, prefix, fps, resetValue == null ? true : resetValue == true);
 				portrait.addOffset(anim, offsetX, offsetY);
-				final finishName:String = anim;
-				portrait.animation.finishCallback = function(finished:String) {
-					if (finished == finishName && portrait.hasAnim(finished + '-loop'))
-						portrait.playAnim(finished + '-loop', true);
-				};
+
 			}
+			portrait.animation.onFinish.add(function(finished:String) {
+				if (portrait.hasAnim(finished + '-loop')) portrait.playAnim(finished + '-loop', true);
+			});
 		}
 		catch (e:Dynamic)
 		{
