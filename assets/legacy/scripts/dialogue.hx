@@ -207,8 +207,36 @@ public function abandonHtml5SussusMoogusIntro():Void
 	hasDialogue = false;
 	vidPlaying = false;
 	inCutscene = false;
-	try if (bgFade != null) bgFade.kill() catch (e:Dynamic) {}
-	try if (boxGroup != null) boxGroup.kill() catch (e:Dynamic) {}
+	// FlxBasic.kill() does not necessarily stop drawing group members on
+	// every HTML5 path. Explicitly hide and disable the partial objects so
+	// failed dialogue setup cannot leave a floating portrait on the gameplay.
+	try
+	{
+		if (bgFade != null)
+		{
+			bgFade.visible = false;
+			bgFade.exists = false;
+			bgFade.kill();
+		}
+	}
+	catch (e:Dynamic) {}
+	try
+	{
+		if (boxGroup != null)
+		{
+			boxGroup.visible = false;
+			boxGroup.exists = false;
+			for (member in boxGroup.members)
+			{
+				if (member == null) continue;
+				member.visible = false;
+				member.exists = false;
+				member.kill();
+			}
+			boxGroup.kill();
+		}
+	}
+	catch (e:Dynamic) {}
 }
 
 public function videoCutscene(?vid:String = 'sussus-moogus', ?dAfter:Bool, ?canSkip:Bool, ?onEnd:Void->Void, ?onFormat:Void->Void)
