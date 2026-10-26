@@ -610,6 +610,13 @@ function refreshDialogue(?oldToo = false)
 	#if html5
 	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue assigned first dialogue text; about to measure text') catch (phaseError:Dynamic) {}
 	#end
+	#if html5
+	// Do not inspect textField.textHeight or write FlxTypeText.scale from the
+	// synchronous post-video HScript callback. On HTML5 those reflected text
+	// metrics can abort initialization before the dialogue-ready flag is set.
+	// FlxText defaults to scale 1, which is safe for the first dialogue line.
+	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue skipped first-frame text measurement on HTML5') catch (phaseError:Dynamic) {}
+	#else
 	try
 	{
 		swagDialogue.scale.y = getSquish(swagDialogue);
@@ -617,12 +624,10 @@ function refreshDialogue(?oldToo = false)
 	catch (scaleError:Dynamic)
 	{
 		swagDialogue.scale.y = 1;
-		#if html5
-		try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue text scaling failed; using scale 1: ' + Std.string(scaleError)) catch (phaseError:Dynamic) {}
-		#end
 	}
+	#end
 	#if html5
-	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue text fields assigned and primary text scaled') catch (phaseError:Dynamic) {}
+	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue text fields assigned and first-frame scaling handled') catch (phaseError:Dynamic) {}
 	#end
 	if (rtlMode)
 	{
