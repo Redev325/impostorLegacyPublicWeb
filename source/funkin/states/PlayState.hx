@@ -1135,18 +1135,15 @@ class PlayState extends MusicBeatState
 							PlayState.recordHtml5Diagnostic('Direct readDialogue returned; hasDialogue=' + hasDialogueAfterFinish + ', uiReady=' + uiReadyAfterFinish);
 						}
 
-						if (!uiReadyAfterFinish)
-						{
-							// A script can set hasDialogue=true before the UI is fully built.
-							// Treat the missing ready acknowledgement as a UI failure even
-							// when the dialogue data flag is already true.
-							// Remove any partially-created HScript UI, then show the same
-							// dialogue using native Flixel objects.
-							try dialogueScript?.call('abandonHtml5SussusMoogusIntro', []) catch (cleanupError:Dynamic) {
-								PlayState.recordHtml5Diagnostic('Partial dialogue UI cleanup failed: ' + Std.string(cleanupError));
-							}
-							startHtml5SussusMoogusFallbackDialogue(dialogueScript);
+						// The HScript currently can acknowledge "ready" without drawing a
+						// visible dialogue overlay on HTML5. For this intro, always hand
+						// presentation over to the native Flixel fallback after the script
+						// has loaded its real dialogue data. This prevents a false-positive
+						// ready flag from silently skipping the whole conversation.
+						try dialogueScript?.call('abandonHtml5SussusMoogusIntro', []) catch (cleanupError:Dynamic) {
+							PlayState.recordHtml5Diagnostic('Partial dialogue UI cleanup failed: ' + Std.string(cleanupError));
 						}
+						startHtml5SussusMoogusFallbackDialogue(dialogueScript);
 
 						// Check the actual UI after its 0.5-second construction delay.
 						// If it never becomes ready, clean partial visuals and force the
@@ -1453,26 +1450,28 @@ class PlayState extends MusicBeatState
 		// data has loaded. Keep its real 15-line data and show it with native
 		// Flixel objects instead of clearing it and silently starting gameplay.
 		var sourceLines:Array<Dynamic> = [];
+		// Always prefer the complete cached source so the fallback begins at
+		// line 1 even if the script UI already consumed its first entry.
 		try
 		{
-			final scriptLines:Dynamic = dialogueScript == null ? null : dialogueScript.get('dialogueList');
-			if (Std.isOfType(scriptLines, Array)) sourceLines = cast scriptLines;
+			final cached:Null<String> = FunkinAssets.getHtml5SongDialogue('sussus-moogus');
+			if (cached != null && cached.trim().length > 0) sourceLines = cast cached.split("\n");
 		}
 		catch (e:Dynamic)
 		{
-			PlayState.recordHtml5Diagnostic('Could not read HScript dialogue list for native fallback: ' + Std.string(e));
+			PlayState.recordHtml5Diagnostic('Could not load cached Sussus Moogus text for native fallback: ' + Std.string(e));
 		}
 
 		if (sourceLines.length == 0)
 		{
 			try
 			{
-				final cached:Null<String> = FunkinAssets.getHtml5SongDialogue('sussus-moogus');
-				if (cached != null) sourceLines = cast cached.split("\n");
+				final scriptLines:Dynamic = dialogueScript == null ? null : dialogueScript.get('dialogueList');
+				if (Std.isOfType(scriptLines, Array)) sourceLines = cast scriptLines;
 			}
 			catch (e:Dynamic)
 			{
-				PlayState.recordHtml5Diagnostic('Could not load cached Sussus Moogus text for native fallback: ' + Std.string(e));
+				PlayState.recordHtml5Diagnostic('Could not read HScript dialogue list for native fallback: ' + Std.string(e));
 			}
 		}
 
