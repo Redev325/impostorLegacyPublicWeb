@@ -495,7 +495,7 @@ function refreshDialogue(?oldToo = false)
 	
 	while (entry.length == 0 && dialogueList.length > 1)
 	{
-		dialogueList.remove(dialogueList[0]);
+		dialogueList.shift();
 		rawEntry = dialogueList[0];
 		entry = rawEntry == null ? '' : Std.string(rawEntry).trim();
 	}
@@ -524,7 +524,7 @@ function refreshDialogue(?oldToo = false)
 		#end
 		// Ignore malformed dialogue entries instead of indexing missing speaker,
 		// emote, or text fields.
-		dialogueList.remove(dialogueList[0]);
+		dialogueList.shift();
 		refreshDialogue(oldToo);
 		return;
 	}
@@ -662,7 +662,12 @@ function refreshDialogue(?oldToo = false)
 	
 	try
 	{
+		// FlxTypedSignal.removeAll is not reflected into HTML5 HScript.
+		// Avoid calling it from the interpreter; one-shot listeners are added
+		// below and safely expire when their animation loop fires.
+		#if !html5
 		who.animation.onLoop.removeAll();
+		#end
 		who.playAnim(curEmote);
 	}
 	catch (e:Dynamic)
@@ -697,7 +702,7 @@ function refreshDialogue(?oldToo = false)
 	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue completion callback configured') catch (phaseError:Dynamic) {}
 	#end
 	
-	dialogueList.remove(dialogueList[0]);
+	dialogueList.shift();
 	#if html5
 	try PlayState.instance?.reportHtml5DialoguePhase('refreshDialogue finished; remainingLines=' + dialogueList.length) catch (phaseError:Dynamic) {}
 	#end
