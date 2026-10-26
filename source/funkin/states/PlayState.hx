@@ -1232,9 +1232,13 @@ class PlayState extends MusicBeatState
 	var html5DiagnosticReason:String = '';
 	var html5DiagnosticCopyStatus:Null<FlxText> = null;
 	var html5FallbackDialogueActive:Bool = false;
-	var html5FallbackDialogueLines:Array<{speaker:String, text:String}> = [];
+	var html5FallbackDialogueLines:Array<{speaker:String, character:String, emote:String, text:String}> = [];
 	var html5FallbackDialogueIndex:Int = 0;
 	var html5FallbackDialogueObjects:Array<FlxSprite> = [];
+	var html5FallbackPortraits:Map<String, FunkinSprite> = new Map();
+	var html5FallbackBox:Null<RGBSprite> = null;
+	var html5FallbackBubble:Null<FlxSprite> = null;
+	var html5FallbackIcon:Null<HealthIcon> = null;
 	var html5FallbackSpeaker:Null<FlxText> = null;
 	var html5FallbackLine:Null<FlxText> = null;
 	var html5FallbackHint:Null<FlxText> = null;
@@ -1279,16 +1283,132 @@ class PlayState extends MusicBeatState
 		html5FallbackDialogueObjects.push(sprite);
 	}
 
+	function getHtml5FallbackPortrait(character:String):Null<FunkinSprite>
+	{
+		if (html5FallbackPortraits.exists(character)) return html5FallbackPortraits.get(character);
+
+		var characterData:Dynamic = null;
+		try
+		{
+			final raw:Null<String> = funkin.FunkinAssets.getHtml5DialogueCharacter(character);
+			if (raw != null) characterData = funkin.FunkinAssets.parseJson5(raw);
+		}
+		catch (e:Dynamic)
+		{
+			PlayState.recordHtml5Diagnostic('Could not load dialogue portrait data for ' + character + ': ' + Std.string(e));
+		}
+		if (characterData == null) return null;
+
+		final sideValue:Dynamic = Reflect.field(characterData, 'side');
+		final side:Int = sideValue == null ? 0 : Std.int(sideValue);
+		final assetValue:Dynamic = Reflect.field(characterData, 'asset');
+		final asset:String = assetValue == null ? character : Std.string(assetValue);
+		final startX:Float = side == 1 ? 206.85 : (side == 2 ? 914.75 : 196.85);
+		final startY:Float = side == 1 ? 198 : (side == 2 ? 216 : 251);
+		final portrait:FunkinSprite = new FunkinSprite(startX, startY);
+		portrait.visible = false;
+		portrait.alpha = 1;
+		try
+		{
+			portrait.loadAtlas('ui/dialogue/characters/' + asset);
+			portrait.updateHitbox();
+
+			final animationData:Dynamic = Reflect.field(characterData, 'animations');
+			if (Std.isOfType(animationData, Array))
+			{
+				for (animation in (cast animationData:Array<Dynamic>))
+				{
+					final animValue:Dynamic = Reflect.field(animation, 'anim');
+					final nameValue:Dynamic = Reflect.field(animation, 'name');
+					if (animValue == null || nameValue == null) continue;
+					final anim:String = Std.string(animValue);
+					final prefix:String = Std.string(nameValue);
+					final fpsValue:Dynamic = Reflect.field(animation, 'fps');
+					final fps:Int = fpsValue == null ? 24 : Std.int(fpsValue);
+					final offsetsValue:Dynamic = Reflect.field(animation, 'offsets');
+					var offsetX:Int = 0;
+					var offsetY:Int = 0;
+					if (Std.isOfType(offsetsValue, Array))
+					{
+						final offsets:Array<Dynamic> = cast offsetsValue;
+						if (offsets.length > 0) offsetX = Std.int(offsets[0]);
+						if (offsets.length > 1) offsetY = Std.int(offsets[1]);
+					}
+				if (Reflect.field(animation, 'loop') == true)
+				{
+					portrait.addAnimByPrefix(anim + '-loop', prefix, fps, true);
+					portrait.addOffset(anim + '-loop', offsetX, offsetY);
+				}
+				final resetValue:Dynamic = Reflect.field(animation, 'reset');
+				portrait.addAnimByPrefix(anim, prefix, fps, resetValue == null ? true : resetValue == true);
+				portrait.addOffset(anim, offsetX, offsetY);
+				final finishName:String = anim;
+				portrait.animation.finishCallback = function(finished:String) {
+					if (finished == finishName && portrait.hasAnim(finished + '-loop'))
+						portrait.playAnim(finished + '-loop', true);
+				};
+			}
+		}
+		catch (e:Dynamic)
+		{
+			PlayState.recordHtml5Diagnostic('Dialogue portrait setup failed for ' + character + ': ' + Std.string(e));
+			return null;
+		}
+
+		// Insert the portrait immediately behind the dialogue box, matching the
+		// original V4 dialogue layering rather than drawing it over the text.
+		if (html5FallbackBox != null && members.indexOf(html5FallbackBox) >= 0)
+		{
+			insert(members.indexOf(html5FallbackBox), portrait);
+			html5FallbackDialogueObjects.push(portrait);
+		}
+		else
+			addHtml5FallbackDialogueObject(portrait);
+		html5FallbackPortraits.set(character, portrait);
+		return portrait;
+	}
+
 	function updateHtml5FallbackDialogueLine():Void
 	{
 		if (html5FallbackDialogueLines.length == 0 || html5FallbackSpeaker == null
-			|| html5FallbackLine == null || html5FallbackHint == null) return;
+			|| html5FallbackLine == null) return;
 
 		final entry = html5FallbackDialogueLines[html5FallbackDialogueIndex];
 		html5FallbackSpeaker.text = entry.speaker;
 		html5FallbackLine.text = entry.text;
-		html5FallbackHint.text = 'Press ENTER / SPACE to continue  (' + (html5FallbackDialogueIndex + 1)
-			+ '/' + html5FallbackDialogueLines.length + ')  |  ESC to skip';
+
+		for (portrait in html5FallbackPortraits)
+			portrait.visible = false;
+		final portrait = getHtml5FallbackPortrait(entry.character);
+		if (portrait != null)
+		{
+			portrait.visible = true;
+			try portrait.playAnim(entry.emote) catch (e:Dynamic) {
+				PlayState.recordHtml5Diagnostic('Dialogue portrait emote unavailable: ' + entry.character + '/' + entry.emote);
+			}
+		}
+
+		if (html5FallbackIcon != null)
+		{
+			final charData:Dynamic = try {
+				final raw:Null<String> = funkin.FunkinAssets.getHtml5DialogueCharacter(entry.character);
+				raw == null ? null : funkin.FunkinAssets.parseJson5(raw);
+			} catch (e:Dynamic) null;
+			final iconValue:Dynamic = charData == null ? null : Reflect.field(charData, 'icon');
+			try html5FallbackIcon.changeIcon(iconValue == null ? entry.character : Std.string(iconValue)) catch (e:Dynamic) {}
+			final colorValue:Dynamic = charData == null ? null : Reflect.field(charData, 'boxColor');
+			final shadeValue:Dynamic = charData == null ? null : Reflect.field(charData, 'boxShadeColor');
+			if (html5FallbackBox != null && colorValue != null && shadeValue != null)
+			{
+				final primary:Null<FlxColor> = FlxColor.fromString(Std.string(colorValue));
+				final shade:Null<FlxColor> = FlxColor.fromString(Std.string(shadeValue));
+				try html5FallbackBox.rgbGraphics.setColors([
+					primary == null ? FlxColor.RED : primary,
+					0xFF666666,
+					shade == null ? 0xFF7D0058 : shade
+				]) catch (e:Dynamic) {}
+			}
+		}
 		html5DialoguePhase = 'Native fallback dialogue displayed; line ' + (html5FallbackDialogueIndex + 1)
 			+ '/' + html5FallbackDialogueLines.length;
 		PlayState.recordHtml5Diagnostic('Dialogue phase checkpoint: ' + html5DialoguePhase);
@@ -1308,6 +1428,10 @@ class PlayState extends MusicBeatState
 			catch (e:Dynamic) {}
 		}
 		html5FallbackDialogueObjects.resize(0);
+		html5FallbackPortraits.clear();
+		html5FallbackBox = null;
+		html5FallbackBubble = null;
+		html5FallbackIcon = null;
 		html5FallbackSpeaker = null;
 		html5FallbackLine = null;
 		html5FallbackHint = null;
@@ -1373,6 +1497,7 @@ class PlayState extends MusicBeatState
 			if (parts.length < 4) continue;
 
 			final rawSpeaker:String = parts[1].toLowerCase();
+			final emote:String = parts[2].toLowerCase();
 			final key:String = parts.slice(3).join(':').trim();
 			var displayText:String = key;
 			try
@@ -1385,14 +1510,28 @@ class PlayState extends MusicBeatState
 				PlayState.recordHtml5Diagnostic('Native fallback localization failed for ' + key + ': ' + Std.string(e));
 			}
 
-			final speaker:String = switch (rawSpeaker)
+			var speaker:String = rawSpeaker.toUpperCase();
+			try
 			{
-				case 'red': 'RED';
-				case 'bf': 'BOYFRIEND';
-				case 'gf': 'GIRLFRIEND';
-				default: rawSpeaker.toUpperCase();
-			};
-			html5FallbackDialogueLines.push({speaker: speaker, text: displayText});
+				final rawCharacterData:Null<String> = funkin.FunkinAssets.getHtml5DialogueCharacter(rawSpeaker);
+				if (rawCharacterData != null)
+				{
+					final characterData:Dynamic = funkin.FunkinAssets.parseJson5(rawCharacterData);
+					final localizedName:Dynamic = Reflect.field(characterData, 'name');
+					if (localizedName != null)
+					{
+						final nameText:Null<String> = funkin.data.Lang.str(Std.string(localizedName), Std.string(localizedName));
+						if (nameText != null) speaker = nameText;
+					}
+				}
+			}
+			catch (e:Dynamic) {}
+			html5FallbackDialogueLines.push({
+				speaker: speaker,
+				character: rawSpeaker,
+				emote: emote,
+				text: displayText
+			});
 		}
 
 		if (html5FallbackDialogueLines.length == 0)
@@ -1411,25 +1550,55 @@ class PlayState extends MusicBeatState
 		html5DialoguePhase = 'Native fallback dialogue initializing';
 		stopHtml5DomWatchdog();
 
-		final panelHeight:Int = Std.int(Math.min(228, FlxG.height));
-		final panelY:Int = FlxG.height - panelHeight;
-		final panel:FlxSprite = new FlxSprite(0, panelY).makeGraphic(FlxG.width, panelHeight, 0xF20B0714);
-		addHtml5FallbackDialogueObject(panel);
-		final accent:FlxSprite = new FlxSprite(0, panelY).makeGraphic(FlxG.width, 4, FlxColor.RED);
-		addHtml5FallbackDialogueObject(accent);
+		// Recreate the game's real V4 dialogue layout using native Flixel
+		// objects: RGB dialogue box, speech bubble, HealthIcon, dialogue fonts,
+		// and the same character portrait atlases used by dialogue.hx.
+		final firstEntry = html5FallbackDialogueLines[0];
+		getHtml5FallbackPortrait(firstEntry.character);
 
-		html5FallbackSpeaker = new FlxText(34, panelY + 16, FlxG.width - 68, '', 26);
-		html5FallbackSpeaker.setFormat(Paths.DEFAULT_FONT, 26, FlxColor.RED, LEFT);
+		html5FallbackBox = new RGBSprite(0, 431);
+		html5FallbackBox.loadGraphic(Paths.image('ui/dialogue/dialogueBox'));
+		html5FallbackBox.screenCenter(FlxAxes.X);
+		html5FallbackBox.x = Math.round(html5FallbackBox.x);
+		html5FallbackBox.alpha = 1;
+		addHtml5FallbackDialogueObject(html5FallbackBox);
+		final initialPrimary:Null<FlxColor> = FlxColor.fromString('0xFFFF1515');
+		final initialShade:Null<FlxColor> = FlxColor.fromString('0xFF7D0058');
+		try html5FallbackBox.rgbGraphics.setColors([
+			initialPrimary == null ? FlxColor.RED : initialPrimary,
+			0xFF666666,
+			initialShade == null ? 0xFF7D0058 : initialShade
+		]) catch (e:Dynamic) {}
+
+		html5FallbackBubble = new FlxSprite(355.85, 496);
+		html5FallbackBubble.loadGraphic(Paths.image('ui/dialogue/bubble'));
+		html5FallbackBubble.screenCenter(FlxAxes.X);
+		html5FallbackBubble.x = Math.round(html5FallbackBubble.x + 18.5);
+		addHtml5FallbackDialogueObject(html5FallbackBubble);
+
+		html5FallbackIcon = new HealthIcon('red', false);
+		html5FallbackIcon.setPosition(220, html5FallbackBubble.getMidpoint().y - 75);
+		html5FallbackIcon.setGraphicSize(Std.int(html5FallbackIcon.width * 0.7));
+		html5FallbackIcon.updateHitbox();
+		addHtml5FallbackDialogueObject(html5FallbackIcon);
+
+		html5FallbackSpeaker = new FlxText(350, 495, Std.int(FlxG.width * 0.5), '', 28);
+		html5FallbackSpeaker.setFormat(Paths.font('liberbold.ttf'), Lang.hasSpecial('smallerDialogue') ? 20 : 30,
+			FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		html5FallbackSpeaker.borderSize = 2;
 		addHtml5FallbackDialogueObject(html5FallbackSpeaker);
 
-		html5FallbackLine = new FlxText(34, panelY + 61, FlxG.width - 68, '', 24);
-		html5FallbackLine.setFormat(Paths.DEFAULT_FONT, 24, FlxColor.WHITE, LEFT);
+		html5FallbackLine = new FlxText(350, 525, Std.int(FlxG.width * 0.5), '', 28);
+		html5FallbackLine.setFormat(Paths.font('liber.ttf'), 26, FlxColor.BLACK, LEFT);
 		html5FallbackLine.textField.wordWrap = true;
 		html5FallbackLine.textField.multiline = true;
 		addHtml5FallbackDialogueObject(html5FallbackLine);
 
-		html5FallbackHint = new FlxText(34, FlxG.height - 34, FlxG.width - 68, '', 15);
-		html5FallbackHint.setFormat(Paths.DEFAULT_FONT, 15, 0xFFD3D3D3, LEFT);
+		// Match the original game's default dialogue colors and keep a very small
+		// control hint outside the text area.
+		html5FallbackHint = new FlxText(15, FlxG.height - 20, FlxG.width - 30, 'ENTER / SPACE: continue    ESC: skip', 12);
+		html5FallbackHint.setFormat(Paths.DEFAULT_FONT, 12, FlxColor.WHITE, LEFT);
+		html5FallbackHint.alpha = 0.65;
 		addHtml5FallbackDialogueObject(html5FallbackHint);
 
 		updateHtml5FallbackDialogueLine();
