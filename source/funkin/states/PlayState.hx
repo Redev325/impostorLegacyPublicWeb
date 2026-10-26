@@ -1335,15 +1335,15 @@ class PlayState extends MusicBeatState
 						if (offsets.length > 0) offsetX = Std.int(offsets[0]);
 						if (offsets.length > 1) offsetY = Std.int(offsets[1]);
 					}
-				if (Reflect.field(animation, 'loop') == true)
-				{
-					portrait.addAnimByPrefix(anim + '-loop', prefix, fps, true);
-					portrait.addOffset(anim + '-loop', offsetX, offsetY);
+					if (Reflect.field(animation, 'loop') == true)
+					{
+						portrait.addAnimByPrefix(anim + '-loop', prefix, fps, true);
+						portrait.addOffset(anim + '-loop', offsetX, offsetY);
+					}
+					final resetValue:Dynamic = Reflect.field(animation, 'reset');
+					portrait.addAnimByPrefix(anim, prefix, fps, resetValue == null ? true : resetValue == true);
+					portrait.addOffset(anim, offsetX, offsetY);
 				}
-				final resetValue:Dynamic = Reflect.field(animation, 'reset');
-				portrait.addAnimByPrefix(anim, prefix, fps, resetValue == null ? true : resetValue == true);
-				portrait.addOffset(anim, offsetX, offsetY);
-
 			}
 			portrait.animation.onFinish.add(function(finished:String) {
 				if (portrait.hasAnim(finished + '-loop')) portrait.playAnim(finished + '-loop', true);
