@@ -1413,8 +1413,10 @@ class PlayState extends MusicBeatState
 
 		final panelHeight:Int = Std.int(Math.min(228, FlxG.height));
 		final panelY:Int = FlxG.height - panelHeight;
-		final panel:FlxSprite = new FlxSprite(0, panelY).makeGraphic(FlxG.width, panelHeight, 0xE6100B1A);
+		final panel:FlxSprite = new FlxSprite(0, panelY).makeGraphic(FlxG.width, panelHeight, 0xF20B0714);
 		addHtml5FallbackDialogueObject(panel);
+		final accent:FlxSprite = new FlxSprite(0, panelY).makeGraphic(FlxG.width, 4, FlxColor.RED);
+		addHtml5FallbackDialogueObject(accent);
 
 		html5FallbackSpeaker = new FlxText(34, panelY + 16, FlxG.width - 68, '', 26);
 		html5FallbackSpeaker.setFormat(Paths.DEFAULT_FONT, 26, FlxColor.RED, LEFT);
