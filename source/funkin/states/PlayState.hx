@@ -1134,6 +1134,17 @@ class PlayState extends MusicBeatState
 							PlayState.recordHtml5Diagnostic('Direct readDialogue returned; hasDialogue=' + hasDialogueAfterFinish + ', uiReady=' + uiReadyAfterFinish);
 						}
 
+						if (!hasDialogueAfterFinish && !uiReadyAfterFinish)
+						{
+							// Remove any partially-created HScript UI, then show the same
+							// dialogue using native Flixel objects. This prevents the normal
+							// two-second recovery from silently deleting the conversation.
+							try dialogueScript?.call('abandonHtml5SussusMoogusIntro', []) catch (cleanupError:Dynamic) {
+								PlayState.recordHtml5Diagnostic('Partial dialogue UI cleanup failed: ' + Std.string(cleanupError));
+							}
+							startHtml5SussusMoogusFallbackDialogue(dialogueScript);
+						}
+
 						// Check the actual UI after its 0.5-second construction delay.
 						// If it never becomes ready, clean partial visuals and force the
 						// song countdown so an HScript/UI exception cannot freeze the game.
@@ -1220,6 +1231,13 @@ class PlayState extends MusicBeatState
 	var html5DiagnosticObjects:Array<FlxBasic> = [];
 	var html5DiagnosticReason:String = '';
 	var html5DiagnosticCopyStatus:Null<FlxText> = null;
+	var html5FallbackDialogueActive:Bool = false;
+	var html5FallbackDialogueLines:Array<{speaker:String, text:String}> = [];
+	var html5FallbackDialogueIndex:Int = 0;
+	var html5FallbackDialogueObjects:Array<FlxSprite> = [];
+	var html5FallbackSpeaker:Null<FlxText> = null;
+	var html5FallbackLine:Null<FlxText> = null;
+	var html5FallbackHint:Null<FlxText> = null;
 
 	function addHtml5DiagnosticSprite(sprite:FlxSprite):Void
 	{
@@ -1251,6 +1269,169 @@ class PlayState extends MusicBeatState
 		html5DialoguePhase = phase ?? 'Dialogue UI ready';
 		html5DialogueUiReady = true;
 		stopHtml5DomWatchdog();
+	}
+
+	function addHtml5FallbackDialogueObject(sprite:FlxSprite):Void
+	{
+		sprite.cameras = [camHUD];
+		sprite.scrollFactor.set();
+		add(sprite);
+		html5FallbackDialogueObjects.push(sprite);
+	}
+
+	function updateHtml5FallbackDialogueLine():Void
+	{
+		if (html5FallbackDialogueLines.length == 0 || html5FallbackSpeaker == null
+			|| html5FallbackLine == null || html5FallbackHint == null) return;
+
+		final entry = html5FallbackDialogueLines[html5FallbackDialogueIndex];
+		html5FallbackSpeaker.text = entry.speaker;
+		html5FallbackLine.text = entry.text;
+		html5FallbackHint.text = 'Press ENTER / SPACE to continue  (' + (html5FallbackDialogueIndex + 1)
+			+ '/' + html5FallbackDialogueLines.length + ')  |  ESC to skip';
+		html5DialoguePhase = 'Native fallback dialogue displayed; line ' + (html5FallbackDialogueIndex + 1)
+			+ '/' + html5FallbackDialogueLines.length;
+		PlayState.recordHtml5Diagnostic('Dialogue phase checkpoint: ' + html5DialoguePhase);
+	}
+
+	function endHtml5FallbackDialogue():Void
+	{
+		if (!html5FallbackDialogueActive) return;
+		html5FallbackDialogueActive = false;
+		for (sprite in html5FallbackDialogueObjects)
+		{
+			try
+			{
+				remove(sprite, true);
+				sprite.destroy();
+			}
+			catch (e:Dynamic) {}
+		}
+		html5FallbackDialogueObjects.resize(0);
+		html5FallbackSpeaker = null;
+		html5FallbackLine = null;
+		html5FallbackHint = null;
+		inCutscene = false;
+		seenCutscene = true;
+		// Leave html5DialogueUiReady set so the video watchdog cannot mistake
+		// the completed fallback dialogue for another missed video callback.
+		songStartCallback = startCountdown;
+		startCountdown();
+	}
+
+	function startHtml5SussusMoogusFallbackDialogue(dialogueScript:Null<FunkinScript>):Void
+	{
+		if (html5FallbackDialogueActive || startedCountdown) return;
+
+		// The HScript UI can fail during HTML5 reflection even after the dialogue
+		// data has loaded. Keep its real 15-line data and show it with native
+		// Flixel objects instead of clearing it and silently starting gameplay.
+		var sourceLines:Array<Dynamic> = [];
+		try
+		{
+			final scriptLines:Dynamic = dialogueScript == null ? null : dialogueScript.get('dialogueList');
+			if (Std.isOfType(scriptLines, Array)) sourceLines = cast scriptLines;
+		}
+		catch (e:Dynamic)
+		{
+			PlayState.recordHtml5Diagnostic('Could not read HScript dialogue list for native fallback: ' + Std.string(e));
+		}
+
+		if (sourceLines.length == 0)
+		{
+			try
+			{
+				final cached:Null<String> = FunkinAssets.getHtml5SongDialogue('sussus-moogus');
+				if (cached != null) sourceLines = cast cached.split("\n");
+			}
+			catch (e:Dynamic)
+			{
+				PlayState.recordHtml5Diagnostic('Could not load cached Sussus Moogus text for native fallback: ' + Std.string(e));
+			}
+		}
+
+		if (sourceLines.length == 0)
+		{
+			sourceLines = cast [
+				':red:sad:dialogue_moogus0', ':bf:neutral:dialogue_moogus1',
+				':gf:suspect:dialogue_moogus2', ':gf:suspect:dialogue_moogus3',
+				':gf:q:dialogue_moogus4', ':bf:neutral:dialogue_moogus5',
+				':bf:q:dialogue_moogus6', ':red:sad:dialogue_moogus7',
+				':gf:happy:dialogue_moogus8', ':gf:mad:dialogue_moogus9',
+				':red:neutral:dialogue_moogus10', ':bf:happy:dialogue_moogus11',
+				':red:happy:dialogue_moogus12', ':red:happy:dialogue_moogus13',
+				':bf:neutral:dialogue_moogus14'
+			];
+		}
+
+		html5FallbackDialogueLines.resize(0);
+		for (raw in sourceLines)
+		{
+			final rawLine:String = raw == null ? '' : Std.string(raw).trim();
+			if (rawLine.length == 0) continue;
+			final parts:Array<String> = rawLine.split(':');
+			if (parts.length < 4) continue;
+
+			final rawSpeaker:String = parts[1].toLowerCase();
+			final key:String = parts.slice(3).join(':').trim();
+			var displayText:String = key;
+			try
+			{
+				final translated:Null<String> = funkin.data.Lang.str(key, key);
+				if (translated != null && translated.trim().length > 0) displayText = translated;
+			}
+			catch (e:Dynamic)
+			{
+				PlayState.recordHtml5Diagnostic('Native fallback localization failed for ' + key + ': ' + Std.string(e));
+			}
+
+			final speaker:String = switch (rawSpeaker)
+			{
+				case 'red': 'RED';
+				case 'bf': 'BOYFRIEND';
+				case 'gf': 'GIRLFRIEND';
+				default: rawSpeaker.toUpperCase();
+			};
+			html5FallbackDialogueLines.push({speaker: speaker, text: displayText});
+		}
+
+		if (html5FallbackDialogueLines.length == 0)
+		{
+			html5FallbackDialogueLines.push({speaker: 'RED', text: 'Sussus Moogus'});
+			PlayState.recordHtml5Diagnostic('Native fallback had no parseable dialogue lines; displaying emergency text.');
+		}
+
+		html5FallbackDialogueIndex = 0;
+		html5FallbackDialogueActive = true;
+		inCutscene = true;
+		camGame.visible = true;
+		camHUD.visible = true;
+		camOther.visible = true;
+		html5DialogueUiReady = true;
+		html5DialoguePhase = 'Native fallback dialogue initializing';
+		stopHtml5DomWatchdog();
+
+		final panelHeight:Int = Std.int(Math.min(228, FlxG.height));
+		final panelY:Int = FlxG.height - panelHeight;
+		final panel:FlxSprite = new FlxSprite(0, panelY).makeGraphic(FlxG.width, panelHeight, 0xE6100B1A);
+		addHtml5FallbackDialogueObject(panel);
+
+		html5FallbackSpeaker = new FlxText(34, panelY + 16, FlxG.width - 68, '', 26);
+		html5FallbackSpeaker.setFormat(Paths.DEFAULT_FONT, 26, FlxColor.RED, LEFT);
+		addHtml5FallbackDialogueObject(html5FallbackSpeaker);
+
+		html5FallbackLine = new FlxText(34, panelY + 61, FlxG.width - 68, '', 24);
+		html5FallbackLine.setFormat(Paths.DEFAULT_FONT, 24, FlxColor.WHITE, LEFT);
+		html5FallbackLine.textField.wordWrap = true;
+		html5FallbackLine.textField.multiline = true;
+		addHtml5FallbackDialogueObject(html5FallbackLine);
+
+		html5FallbackHint = new FlxText(34, FlxG.height - 34, FlxG.width - 68, '', 15);
+		html5FallbackHint.setFormat(Paths.DEFAULT_FONT, 15, FlxColor.LIGHTGRAY, LEFT);
+		addHtml5FallbackDialogueObject(html5FallbackHint);
+
+		updateHtml5FallbackDialogueLine();
+		PlayState.recordHtml5Diagnostic('Native HTML5 dialogue fallback displayed because the HScript dialogue UI did not become ready.');
 	}
 
 	function showHtml5DomFreezeDiagnostics(reason:String):Void
@@ -2584,6 +2765,23 @@ class PlayState extends MusicBeatState
 					startCountdown();
 				}
 			}
+		}
+		if (html5FallbackDialogueActive)
+		{
+			if (FlxG.keys.justPressed.ESCAPE)
+				endHtml5FallbackDialogue();
+			else if (FlxG.keys.justPressed.ENTER || FlxG.keys.justPressed.SPACE || FlxG.keys.justPressed.Z)
+			{
+				if (html5FallbackDialogueIndex + 1 < html5FallbackDialogueLines.length)
+				{
+					html5FallbackDialogueIndex++;
+					updateHtml5FallbackDialogueLine();
+				}
+				else
+					endHtml5FallbackDialogue();
+			}
+			super.update(elapsed);
+			return;
 		}
 		if (html5DiagnosticVisible)
 		{
