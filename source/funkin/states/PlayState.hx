@@ -1135,11 +1135,13 @@ class PlayState extends MusicBeatState
 							PlayState.recordHtml5Diagnostic('Direct readDialogue returned; hasDialogue=' + hasDialogueAfterFinish + ', uiReady=' + uiReadyAfterFinish);
 						}
 
-						if (!hasDialogueAfterFinish && !uiReadyAfterFinish)
+						if (!uiReadyAfterFinish)
 						{
+							// A script can set hasDialogue=true before the UI is fully built.
+							// Treat the missing ready acknowledgement as a UI failure even
+							// when the dialogue data flag is already true.
 							// Remove any partially-created HScript UI, then show the same
-							// dialogue using native Flixel objects. This prevents the normal
-							// two-second recovery from silently deleting the conversation.
+							// dialogue using native Flixel objects.
 							try dialogueScript?.call('abandonHtml5SussusMoogusIntro', []) catch (cleanupError:Dynamic) {
 								PlayState.recordHtml5Diagnostic('Partial dialogue UI cleanup failed: ' + Std.string(cleanupError));
 							}
