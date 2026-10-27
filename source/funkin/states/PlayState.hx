@@ -1471,9 +1471,8 @@ class PlayState extends MusicBeatState
 		final entry = html5FallbackDialogueLines[html5FallbackDialogueIndex];
 		updateHtml5FallbackDomDialogue(entry);
 
-		html5FallbackSpeaker.text = entry.speaker;
-		html5FallbackLine.text = entry.text;
-
+		// Keep the animated portrait independent of the FlxText objects: the
+		// browser-level text panel is created before these optional sprites.
 		for (portrait in html5FallbackPortraits)
 			portrait.visible = false;
 		final portrait = getHtml5FallbackPortrait(entry.character);
@@ -1484,6 +1483,9 @@ class PlayState extends MusicBeatState
 				PlayState.recordHtml5Diagnostic('Dialogue portrait emote unavailable: ' + entry.character + '/' + entry.emote);
 			}
 		}
+
+		if (html5FallbackSpeaker != null) html5FallbackSpeaker.text = entry.speaker;
+		if (html5FallbackLine != null) html5FallbackLine.text = entry.text;
 
 		if (html5FallbackIcon != null)
 		{
@@ -1552,7 +1554,10 @@ class PlayState extends MusicBeatState
 
 	function startHtml5SussusMoogusFallbackDialogue(dialogueScript:Null<FunkinScript>):Void
 	{
-		if (html5FallbackDialogueActive || startedCountdown) return;
+		if (html5FallbackDialogueActive) return;
+		// Do not suppress the dialogue just because another startup path set
+		// startedCountdown early. The first-song intro must finish its dialogue
+		// handoff before the player sees a silent gameplay scene.
 
 		// The HScript UI can fail during HTML5 reflection even after the dialogue
 		// data has loaded. Keep its real 15-line data and show it with native
@@ -1668,10 +1673,12 @@ class PlayState extends MusicBeatState
 		// Recreate the game's real V4 dialogue layout using native Flixel
 		// objects: RGB dialogue box, speech bubble, HealthIcon, dialogue fonts,
 		// and the same character portrait atlases used by dialogue.hx.
-		final firstEntry = html5FallbackDialogueLines[0];
-		getHtml5FallbackPortrait(firstEntry.character);
+		try
+		{
+			final firstEntry = html5FallbackDialogueLines[0];
+			getHtml5FallbackPortrait(firstEntry.character);
 
-		html5FallbackBox = new RGBSprite(0, 431);
+			html5FallbackBox = new RGBSprite(0, 431);
 		html5FallbackBox.loadGraphic(Paths.image('ui/dialogue/dialogueBox'));
 		html5FallbackBox.screenCenter(FlxAxes.X);
 		html5FallbackBox.x = Math.round(html5FallbackBox.x);
@@ -1716,7 +1723,14 @@ class PlayState extends MusicBeatState
 		html5FallbackHint.alpha = 0.65;
 		addHtml5FallbackDialogueObject(html5FallbackHint);
 
-		updateHtml5FallbackDialogueLine();
+			updateHtml5FallbackDialogueLine();
+		}
+		catch (artError:Dynamic)
+		{
+			// The DOM panel is the reliable text surface; art failures must not
+			// abort it or turn a dialogue problem into a silent gameplay skip.
+			PlayState.recordHtml5Diagnostic('Native dialogue art setup failed; keeping browser text panel and animation where available: ' + Std.string(artError));
+		}
 		PlayState.recordHtml5Diagnostic('Native HTML5 dialogue fallback displayed because the HScript dialogue UI did not become ready.');
 	}
 
