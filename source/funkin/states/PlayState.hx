@@ -1242,6 +1242,10 @@ class PlayState extends MusicBeatState
 	var html5FallbackSpeaker:Null<FlxText> = null;
 	var html5FallbackLine:Null<FlxText> = null;
 	var html5FallbackHint:Null<FlxText> = null;
+	var html5FallbackDomOverlay:Dynamic = null;
+	var html5FallbackDomSpeaker:Dynamic = null;
+	var html5FallbackDomLine:Dynamic = null;
+	var html5FallbackDomHint:Dynamic = null;
 
 	function addHtml5DiagnosticSprite(sprite:FlxSprite):Void
 	{
@@ -1367,12 +1371,106 @@ class PlayState extends MusicBeatState
 		return portrait;
 	}
 
+	function createHtml5FallbackDomDialogue():Void
+	{
+		if (html5FallbackDomOverlay != null) return;
+
+		var canvasLeft:Float = 0;
+		var canvasTop:Float = 0;
+		var canvasWidth:Float = Browser.window.innerWidth;
+		var canvasHeight:Float = Browser.window.innerHeight;
+		try
+		{
+			final gameCanvas:Dynamic = Browser.document.querySelector('canvas');
+			if (gameCanvas != null)
+			{
+				final rect:Dynamic = gameCanvas.getBoundingClientRect();
+				canvasLeft = rect.left;
+				canvasTop = rect.top;
+				canvasWidth = rect.width;
+				canvasHeight = rect.height;
+			}
+		}
+		catch (e:Dynamic)
+		{
+			PlayState.recordHtml5Diagnostic('Could not measure game canvas for DOM dialogue: ' + Std.string(e));
+		}
+
+		final panelHeight:Float = Math.max(150, canvasHeight * 0.33);
+		final panelTop:Float = canvasTop + canvasHeight - panelHeight;
+		final panel:Dynamic = Browser.document.createElement('div');
+		panel.setAttribute('aria-live', 'polite');
+		panel.setAttribute('role', 'dialog');
+		panel.style.cssText = 'position:fixed;z-index:2147483646;box-sizing:border-box;overflow:hidden;'
+			+ 'left:' + canvasLeft + 'px;top:' + panelTop + 'px;width:' + canvasWidth + 'px;height:' + panelHeight + 'px;'
+			+ 'background:rgba(12,7,22,0.96);border-top:4px solid #ff1515;'
+			+ 'color:#fff;font-family:Arial,Helvetica,sans-serif;pointer-events:none;'
+			+ 'padding:clamp(14px,2.5%,28px) clamp(20px,3%,40px);';
+
+		// Use the actual dialogue-box image as a subtle backing when the game's
+		// deployed asset URL is available. The CSS panel remains readable if it
+		// cannot be loaded (for example on a nested hosting path).
+		final boxImage:Dynamic = Browser.document.createElement('img');
+		boxImage.src = 'assets/legacy/images/ui/dialogue/dialogueBox.png';
+		boxImage.alt = '';
+		boxImage.setAttribute('aria-hidden', 'true');
+		boxImage.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:fill;opacity:0.18;z-index:0;';
+		boxImage.onerror = function(_) {
+			boxImage.style.display = 'none';
+			return null;
+		};
+		panel.appendChild(boxImage);
+
+		final speaker:Dynamic = Browser.document.createElement('div');
+		speaker.style.cssText = 'position:relative;z-index:1;font-size:clamp(20px,3vh,30px);'
+			+ 'line-height:1.15;font-weight:bold;color:#ff2525;margin:0 0 12px 0;';
+		panel.appendChild(speaker);
+
+		final line:Dynamic = Browser.document.createElement('div');
+		line.style.cssText = 'position:relative;z-index:1;white-space:pre-wrap;overflow-wrap:anywhere;'
+			+ 'font-size:clamp(18px,2.6vh,28px);line-height:1.25;color:#fff;'
+			+ 'text-shadow:1px 2px 0 #000;';
+		panel.appendChild(line);
+
+		final hint:Dynamic = Browser.document.createElement('div');
+		hint.style.cssText = 'position:absolute;z-index:1;left:3%;right:3%;bottom:10px;'
+			+ 'font-size:12px;line-height:1.2;color:#ded8e8;opacity:0.82;';
+		panel.appendChild(hint);
+
+		Browser.document.body.appendChild(panel);
+		html5FallbackDomOverlay = panel;
+		html5FallbackDomSpeaker = speaker;
+		html5FallbackDomLine = line;
+		html5FallbackDomHint = hint;
+	}
+
+	function updateHtml5FallbackDomDialogue(entry:{speaker:String, character:String, emote:String, text:String}):Void
+	{
+		if (html5FallbackDomOverlay == null) createHtml5FallbackDomDialogue();
+		if (html5FallbackDomSpeaker != null) html5FallbackDomSpeaker.textContent = entry.speaker;
+		if (html5FallbackDomLine != null) html5FallbackDomLine.textContent = entry.text;
+		if (html5FallbackDomHint != null)
+			html5FallbackDomHint.textContent = 'Press ENTER / SPACE to continue  ('
+				+ (html5FallbackDialogueIndex + 1) + '/' + html5FallbackDialogueLines.length + ')  |  ESC to skip';
+
+		if (html5FallbackDomOverlay != null)
+		{
+			final borderColor:String = switch (entry.character)
+			{
+				case 'bf': '#66ffff';
+				case 'gf': '#ee6a6d';
+				default: '#ff1515';
+			};
+			html5FallbackDomOverlay.style.borderTopColor = borderColor;
+		}
+	}
+
 	function updateHtml5FallbackDialogueLine():Void
 	{
-		if (html5FallbackDialogueLines.length == 0 || html5FallbackSpeaker == null
-			|| html5FallbackLine == null) return;
-
+		if (html5FallbackDialogueLines.length == 0) return;
 		final entry = html5FallbackDialogueLines[html5FallbackDialogueIndex];
+		updateHtml5FallbackDomDialogue(entry);
+
 		html5FallbackSpeaker.text = entry.speaker;
 		html5FallbackLine.text = entry.text;
 
@@ -1428,6 +1526,16 @@ class PlayState extends MusicBeatState
 		}
 		html5FallbackDialogueObjects.resize(0);
 		html5FallbackPortraits.clear();
+		try
+		{
+			if (html5FallbackDomOverlay != null && html5FallbackDomOverlay.parentNode != null)
+				html5FallbackDomOverlay.parentNode.removeChild(html5FallbackDomOverlay);
+		}
+		catch (e:Dynamic) {}
+		html5FallbackDomOverlay = null;
+		html5FallbackDomSpeaker = null;
+		html5FallbackDomLine = null;
+		html5FallbackDomHint = null;
 		html5FallbackBox = null;
 		html5FallbackBubble = null;
 		html5FallbackIcon = null;
@@ -1550,6 +1658,12 @@ class PlayState extends MusicBeatState
 		html5DialogueUiReady = true;
 		html5DialoguePhase = 'Native fallback dialogue initializing';
 		stopHtml5DomWatchdog();
+
+		// Put text in a browser-level overlay before loading optional Flixel
+		// artwork. This remains visible even if the renderer mishandles the
+		// fallback sprites, while character atlases continue animating on canvas.
+		createHtml5FallbackDomDialogue();
+		updateHtml5FallbackDialogueLine();
 
 		// Recreate the game's real V4 dialogue layout using native Flixel
 		// objects: RGB dialogue box, speech bubble, HealthIcon, dialogue fonts,
