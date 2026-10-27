@@ -1246,6 +1246,8 @@ class PlayState extends MusicBeatState
 	var html5FallbackDomSpeaker:Dynamic = null;
 	var html5FallbackDomLine:Dynamic = null;
 	var html5FallbackDomHint:Dynamic = null;
+	var html5FallbackKeyHandler:Dynamic = null;
+	var html5FallbackClickHandler:Dynamic = null;
 
 	function addHtml5DiagnosticSprite(sprite:FlxSprite):Void
 	{
@@ -1437,11 +1439,47 @@ class PlayState extends MusicBeatState
 			+ 'font-size:12px;line-height:1.2;color:#ded8e8;opacity:0.82;';
 		panel.appendChild(hint);
 
+		// Keep the original game input usable and also accept browser-level
+		// keyboard input, which works even when the canvas has lost focus.
+		panel.style.pointerEvents = 'auto';
+		panel.style.cursor = 'pointer';
+		panel.onclick = function(event:Dynamic) {
+			if (html5FallbackDialogueActive) advanceHtml5FallbackDialogue(false);
+			if (event != null && Reflect.isFunction(Reflect.field(event, 'preventDefault'))) event.preventDefault();
+			return false;
+		};
+		html5FallbackClickHandler = panel.onclick;
+
+		html5FallbackKeyHandler = function(event:Dynamic) {
+			if (!html5FallbackDialogueActive || event == null) return;
+			final key:String = Std.string(Reflect.field(event, 'key') ?? '');
+			final code:String = Std.string(Reflect.field(event, 'code') ?? '');
+			if (key == 'Enter' || key == ' ' || key == 'Escape' || code == 'Space')
+			{
+				if (Reflect.isFunction(Reflect.field(event, 'preventDefault'))) event.preventDefault();
+				if (key == 'Escape') advanceHtml5FallbackDialogue(true);
+				else advanceHtml5FallbackDialogue(false);
+			}
+		};
+		Browser.document.addEventListener('keydown', html5FallbackKeyHandler, true);
+
 		Browser.document.body.appendChild(panel);
 		html5FallbackDomOverlay = panel;
 		html5FallbackDomSpeaker = speaker;
 		html5FallbackDomLine = line;
 		html5FallbackDomHint = hint;
+	}
+
+	function advanceHtml5FallbackDialogue(skip:Bool = false):Void
+	{
+		if (!html5FallbackDialogueActive) return;
+		if (skip || html5FallbackDialogueIndex + 1 >= html5FallbackDialogueLines.length)
+		{
+			endHtml5FallbackDialogue();
+			return;
+		}
+		html5FallbackDialogueIndex++;
+		updateHtml5FallbackDialogueLine();
 	}
 
 	function updateHtml5FallbackDomDialogue(entry:{speaker:String, character:String, emote:String, text:String}):Void
@@ -1530,10 +1568,14 @@ class PlayState extends MusicBeatState
 		html5FallbackPortraits.clear();
 		try
 		{
+			if (html5FallbackKeyHandler != null)
+				Browser.document.removeEventListener('keydown', html5FallbackKeyHandler, true);
 			if (html5FallbackDomOverlay != null && html5FallbackDomOverlay.parentNode != null)
 				html5FallbackDomOverlay.parentNode.removeChild(html5FallbackDomOverlay);
 		}
 		catch (e:Dynamic) {}
+		html5FallbackKeyHandler = null;
+		html5FallbackClickHandler = null;
 		html5FallbackDomOverlay = null;
 		html5FallbackDomSpeaker = null;
 		html5FallbackDomLine = null;
@@ -3068,18 +3110,9 @@ class PlayState extends MusicBeatState
 		}
 		if (html5FallbackDialogueActive)
 		{
-			if (FlxG.keys.justPressed.ESCAPE)
-				endHtml5FallbackDialogue();
-			else if (FlxG.keys.justPressed.ENTER || FlxG.keys.justPressed.SPACE || FlxG.keys.justPressed.Z)
-			{
-				if (html5FallbackDialogueIndex + 1 < html5FallbackDialogueLines.length)
-				{
-					html5FallbackDialogueIndex++;
-					updateHtml5FallbackDialogueLine();
-				}
-				else
-					endHtml5FallbackDialogue();
-			}
+			// Input is handled by the document keydown listener and panel click
+			// handler. Continue updating the state so animated character atlases
+			// remain alive while dialogue is on screen.
 			super.update(elapsed);
 			return;
 		}
