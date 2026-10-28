@@ -1135,24 +1135,15 @@ class PlayState extends MusicBeatState
 							PlayState.recordHtml5Diagnostic('Direct readDialogue returned; hasDialogue=' + hasDialogueAfterFinish + ', uiReady=' + uiReadyAfterFinish);
 						}
 
-						if (hasDialogueAfterFinish && uiReadyAfterFinish)
-						{
-							// The original dialogue script has initialized successfully.
-							// Keep its real Flixel dialogue box, portraits, character animation
-							// callbacks, FlxTypeText typewriter, and per-speaker voice samples.
-							html5DialogueUiReady = true;
-							html5DialoguePhase = 'Original HScript dialogue UI ready; keeping native dialogue lifecycle';
-							PlayState.recordHtml5Diagnostic('Original HScript dialogue UI is ready; native fallback not used.');
+						// Use one consistent HTML5 presenter for this first intro. Even when
+						// HScript claims its UI is ready, it can leave BF/GF portraits blank
+						// or fail to play the voice samples on the web build. Tear down its
+						// partial visuals and always hand the loaded dialogue to the fallback.
+						PlayState.recordHtml5Diagnostic('Handoff flags before fallback: hasDialogue=' + hasDialogueAfterFinish + ', uiReady=' + uiReadyAfterFinish);
+						try dialogueScript?.call('abandonHtml5SussusMoogusIntro', []) catch (cleanupError:Dynamic) {
+							PlayState.recordHtml5Diagnostic('Partial dialogue UI cleanup failed: ' + Std.string(cleanupError));
 						}
-						else
-						{
-							// Only tear down the original script UI and use the fallback when
-							// its dialogue flag or ready acknowledgement is genuinely missing.
-							try dialogueScript?.call('abandonHtml5SussusMoogusIntro', []) catch (cleanupError:Dynamic) {
-								PlayState.recordHtml5Diagnostic('Partial dialogue UI cleanup failed: ' + Std.string(cleanupError));
-							}
-							startHtml5SussusMoogusFallbackDialogue(dialogueScript);
-						}
+						startHtml5SussusMoogusFallbackDialogue(dialogueScript);
 
 						// Check the actual UI after its 0.5-second construction delay.
 						// If it never becomes ready, clean partial visuals and force the
