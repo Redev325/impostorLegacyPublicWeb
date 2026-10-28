@@ -1240,6 +1240,7 @@ class PlayState extends MusicBeatState
 	var html5FallbackTypingTimer:Float = 0;
 	var html5FallbackTypedChars:Int = 0;
 	var html5FallbackVoice:String = 'red';
+	var html5FallbackVoiceSound:Dynamic = null;
 	var html5FallbackBox:Null<RGBSprite> = null;
 	var html5FallbackBubble:Null<FlxSprite> = null;
 	var html5FallbackIcon:Null<HealthIcon> = null;
@@ -1516,9 +1517,14 @@ class PlayState extends MusicBeatState
 				html5FallbackDomLine.textContent = entry.text.substr(0, html5FallbackTypedChars);
 
 			final typed:String = entry.text.substr(html5FallbackTypedChars - 1, 1);
-			if (typed != ' ' && typed != '\\n' && typed != '\\t')
+			if (typed != ' ' && typed.charCodeAt(0) != 10 && typed.charCodeAt(0) != 9)
 			{
-				try FlxG.sound.play(Paths.sound('dialogue/' + html5FallbackVoice), 0.6) catch (voiceError:Dynamic) {
+				try
+				{
+					if (html5FallbackVoiceSound != null) html5FallbackVoiceSound.play(true);
+				}
+				catch (voiceError:Dynamic)
+				{
 					PlayState.recordHtml5Diagnostic('Dialogue voice sample failed for ' + html5FallbackVoice + ': ' + Std.string(voiceError));
 				}
 			}
@@ -1531,6 +1537,17 @@ class PlayState extends MusicBeatState
 		html5FallbackTypedChars = 0;
 		html5FallbackTypingTimer = 0;
 		html5FallbackVoice = entry.sound;
+		try
+		{
+			// Reuse the same FlxSound-per-speaker behavior as FlxTypeText in the
+			// original dialogue script, restarting this short voice tick per glyph.
+			html5FallbackVoiceSound = FlxG.sound.load(Paths.sound('dialogue/' + html5FallbackVoice), 0.6);
+		}
+		catch (voiceLoadError:Dynamic)
+		{
+			html5FallbackVoiceSound = null;
+			PlayState.recordHtml5Diagnostic('Could not load fallback dialogue voice ' + html5FallbackVoice + ': ' + Std.string(voiceLoadError));
+		}
 		if (html5FallbackDomSpeaker != null) html5FallbackDomSpeaker.textContent = entry.speaker;
 		if (html5FallbackDomLine != null) html5FallbackDomLine.textContent = '';
 		if (html5FallbackDomHint != null)
@@ -1632,6 +1649,8 @@ class PlayState extends MusicBeatState
 		html5FallbackSpeaker = null;
 		html5FallbackLine = null;
 		html5FallbackHint = null;
+		try if (html5FallbackVoiceSound != null) html5FallbackVoiceSound.stop() catch (e:Dynamic) {}
+		html5FallbackVoiceSound = null;
 		inCutscene = false;
 		seenCutscene = true;
 		// Leave html5DialogueUiReady set so the video watchdog cannot mistake
