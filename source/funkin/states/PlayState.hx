@@ -1249,6 +1249,7 @@ class PlayState extends MusicBeatState
 	var html5FallbackTypingTimer:Float = 0;
 	var html5FallbackTypedChars:Int = 0;
 	var html5FallbackVoice:String = 'red';
+	var html5FallbackDomVoiceAudio:Dynamic = null;
 	var html5FallbackVoiceSound:Dynamic = null;
 	var html5FallbackBox:Null<RGBSprite> = null;
 	var html5FallbackBubble:Null<FlxSprite> = null;
@@ -1378,13 +1379,20 @@ class PlayState extends MusicBeatState
 			return null;
 		}
 
-		// Insert the portrait immediately behind the dialogue box, matching the
-		// original V4 dialogue layering rather than drawing it over the text.
-		if (html5FallbackPortraitLayer != null)
-			html5FallbackPortraitLayer.add(portrait);
+		// Assign the HUD camera directly and insert each portrait as a normal
+		// PlayState member. This avoids a blank portrait when a nested group does
+		// not propagate its camera correctly on the HTML5 renderer.
+		portrait.cameras = [camHUD];
+		portrait.scrollFactor.set();
+		if (html5FallbackBox != null && members.indexOf(html5FallbackBox) >= 0)
+		{
+			insert(members.indexOf(html5FallbackBox), portrait);
+			html5FallbackDialogueObjects.push(portrait);
+		}
 		else
 			addHtml5FallbackDialogueObject(portrait);
 		html5FallbackPortraits.set(character, portrait);
+		PlayState.recordHtml5Diagnostic('Fallback portrait added: ' + character + ', side=' + side + ', frames=' + portrait.frames.frames.length);
 		return portrait;
 	}
 
@@ -1787,10 +1795,8 @@ class PlayState extends MusicBeatState
 
 		// Keep the animated portraits in the same camera-backed sprite group
 		// used by the original dialogue script, behind the dialogue box.
-		html5FallbackPortraitLayer = new FlxSpriteGroup();
-		html5FallbackPortraitLayer.camera = camHUD;
-		add(html5FallbackPortraitLayer);
-		html5FallbackDialogueObjects.push(html5FallbackPortraitLayer);
+		// Portraits are inserted directly into PlayState with camHUD assigned,
+		// matching the original dialogue script's rendering behavior.
 
 		// Put text in a browser-level overlay before loading optional Flixel
 		// artwork. This remains visible even if the renderer mishandles the
