@@ -1392,7 +1392,7 @@ class PlayState extends MusicBeatState
 		else
 			addHtml5FallbackDialogueObject(portrait);
 		html5FallbackPortraits.set(character, portrait);
-		PlayState.recordHtml5Diagnostic('Fallback portrait added: ' + character + ', side=' + side + ', frames=' + portrait.frames.frames.length);
+		PlayState.recordHtml5Diagnostic('Fallback portrait added: ' + character + ', side=' + side + ', happyAnim=' + portrait.hasAnim('happy') + ', requestedAssets=' + asset);
 		return portrait;
 	}
 
