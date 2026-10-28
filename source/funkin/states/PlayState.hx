@@ -1537,13 +1537,34 @@ class PlayState extends MusicBeatState
 			final typed:String = entry.text.substr(html5FallbackTypedChars - 1, 1);
 			if (typed != ' ' && typed.charCodeAt(0) != 10 && typed.charCodeAt(0) != 9)
 			{
+				var browserVoiceStarted:Bool = false;
 				try
 				{
-					if (html5FallbackVoiceSound != null) html5FallbackVoiceSound.play(true);
+					if (html5FallbackDomVoiceAudio != null)
+					{
+						try html5FallbackDomVoiceAudio.currentTime = 0 catch (seekError:Dynamic) {}
+						final playPromise:Dynamic = html5FallbackDomVoiceAudio.play();
+						browserVoiceStarted = true;
+						// If the browser rejects the audio request, fall back to FlxSound.
+						final promiseCatch:Dynamic = playPromise == null ? null : Reflect.field(playPromise, 'catch');
+						if (Reflect.isFunction(promiseCatch) && html5FallbackVoiceSound != null)
+						{
+							Reflect.callMethod(playPromise, promiseCatch, [function(audioError:Dynamic) {
+								try if (html5FallbackVoiceSound != null) html5FallbackVoiceSound.play(true) catch (fallbackAudioError:Dynamic) {}
+								return null;
+							}]);
+						}
+					}
 				}
 				catch (voiceError:Dynamic)
 				{
-					PlayState.recordHtml5Diagnostic('Dialogue voice sample failed for ' + html5FallbackVoice + ': ' + Std.string(voiceError));
+					PlayState.recordHtml5Diagnostic('Browser dialogue voice failed for ' + html5FallbackVoice + ': ' + Std.string(voiceError));
+				}
+				if (!browserVoiceStarted)
+				{
+					try if (html5FallbackVoiceSound != null) html5FallbackVoiceSound.play(true) catch (fallbackAudioError:Dynamic) {
+						PlayState.recordHtml5Diagnostic('Flixel dialogue voice failed for ' + html5FallbackVoice + ': ' + Std.string(fallbackAudioError));
+					}
 				}
 			}
 		}
@@ -1555,16 +1576,38 @@ class PlayState extends MusicBeatState
 		html5FallbackTypedChars = 0;
 		html5FallbackTypingTimer = 0;
 		html5FallbackVoice = entry.sound;
+		try if (html5FallbackVoiceSound != null) html5FallbackVoiceSound.stop() catch (stopError:Dynamic) {}
 		try
 		{
-			// Reuse the same FlxSound-per-speaker behavior as FlxTypeText in the
-			// original dialogue script, restarting this short voice tick per glyph.
+			// Set up both browser audio and Flixel audio: browser playback handles
+			// the original OGG files directly, and FlxSound is the rejection fallback.
+			if (html5FallbackDomVoiceAudio == null)
+			{
+				html5FallbackDomVoiceAudio = Browser.document.createElement('audio');
+				html5FallbackDomVoiceAudio.preload = 'auto';
+				html5FallbackDomVoiceAudio.volume = 0.6;
+				html5FallbackDomVoiceAudio.style.display = 'none';
+				Browser.document.body.appendChild(html5FallbackDomVoiceAudio);
+			}
+			final voiceSrc:String = 'assets/legacy/sounds/dialogue/' + html5FallbackVoice + '.ogg';
+			if (html5FallbackDomVoiceAudio.src.indexOf(voiceSrc) < 0)
+			{
+				html5FallbackDomVoiceAudio.src = voiceSrc;
+				html5FallbackDomVoiceAudio.load();
+			}
+		}
+		catch (browserVoiceSetupError:Dynamic)
+		{
+			PlayState.recordHtml5Diagnostic('Could not prepare browser dialogue voice ' + html5FallbackVoice + ': ' + Std.string(browserVoiceSetupError));
+		}
+		try
+		{
 			html5FallbackVoiceSound = FlxG.sound.load(Paths.sound('dialogue/' + html5FallbackVoice), 0.6);
 		}
 		catch (voiceLoadError:Dynamic)
 		{
 			html5FallbackVoiceSound = null;
-			PlayState.recordHtml5Diagnostic('Could not load fallback dialogue voice ' + html5FallbackVoice + ': ' + Std.string(voiceLoadError));
+			PlayState.recordHtml5Diagnostic('Could not load fallback Flixel voice ' + html5FallbackVoice + ': ' + Std.string(voiceLoadError));
 		}
 		if (html5FallbackDomSpeaker != null) html5FallbackDomSpeaker.textContent = entry.speaker;
 		if (html5FallbackDomLine != null) html5FallbackDomLine.textContent = '';
@@ -1669,6 +1712,16 @@ class PlayState extends MusicBeatState
 		html5FallbackHint = null;
 		try if (html5FallbackVoiceSound != null) html5FallbackVoiceSound.stop() catch (e:Dynamic) {}
 		html5FallbackVoiceSound = null;
+		try
+		{
+			if (html5FallbackDomVoiceAudio != null)
+			{
+				html5FallbackDomVoiceAudio.pause();
+				if (html5FallbackDomVoiceAudio.parentNode != null) html5FallbackDomVoiceAudio.parentNode.removeChild(html5FallbackDomVoiceAudio);
+			}
+		}
+		catch (audioCleanupError:Dynamic) {}
+		html5FallbackDomVoiceAudio = null;
 		inCutscene = false;
 		seenCutscene = true;
 		// Leave html5DialogueUiReady set so the video watchdog cannot mistake
