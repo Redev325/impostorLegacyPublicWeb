@@ -1531,7 +1531,7 @@ class PlayState extends MusicBeatState
 		}
 	}
 
-	function updateHtml5FallbackDomDialogue(entry:{speaker:String, character:String, emote:String, text:String}):Void
+	function updateHtml5FallbackDomDialogue(entry:{speaker:String, character:String, emote:String, sound:String, text:String}):Void
 	{
 		if (html5FallbackDomOverlay == null) createHtml5FallbackDomDialogue();
 		html5FallbackTypedChars = 0;
