@@ -1232,10 +1232,14 @@ class PlayState extends MusicBeatState
 	var html5DiagnosticReason:String = '';
 	var html5DiagnosticCopyStatus:Null<FlxText> = null;
 	var html5FallbackDialogueActive:Bool = false;
-	var html5FallbackDialogueLines:Array<{speaker:String, character:String, emote:String, text:String}> = [];
+	var html5FallbackDialogueLines:Array<{speaker:String, character:String, emote:String, sound:String, text:String}> = [];
 	var html5FallbackDialogueIndex:Int = 0;
-	var html5FallbackDialogueObjects:Array<FlxSprite> = [];
+	var html5FallbackDialogueObjects:Array<FlxBasic> = [];
 	var html5FallbackPortraits:Map<String, FunkinSprite> = new Map();
+	var html5FallbackPortraitLayer:Null<FlxSpriteGroup> = null;
+	var html5FallbackTypingTimer:Float = 0;
+	var html5FallbackTypedChars:Int = 0;
+	var html5FallbackVoice:String = 'red';
 	var html5FallbackBox:Null<RGBSprite> = null;
 	var html5FallbackBubble:Null<FlxSprite> = null;
 	var html5FallbackIcon:Null<HealthIcon> = null;
@@ -1309,15 +1313,18 @@ class PlayState extends MusicBeatState
 		final side:Int = sideValue == null ? 0 : Std.int(sideValue);
 		final assetValue:Dynamic = Reflect.field(characterData, 'asset');
 		final asset:String = assetValue == null ? character : Std.string(assetValue);
-		final startX:Float = side == 1 ? 206.85 : (side == 2 ? 914.75 : 196.85);
+		final startX:Float = side == 1 ? 0 : (side == 2 ? 914.75 : 196.85);
 		final startY:Float = side == 1 ? 198 : (side == 2 ? 216 : 251);
 		final portrait:FunkinSprite = new FunkinSprite(startX, startY);
 		portrait.visible = false;
 		portrait.alpha = 1;
 		try
 		{
-			portrait.loadAtlas('ui/dialogue/characters/' + asset);
+			// Use the same Sparrow atlas loader as the original GF portrait.
+			// These files are PNG/XML atlases, not Animate/Animation.json atlases.
+			portrait.frames = Paths.getSparrowAtlas('ui/dialogue/characters/' + asset);
 			portrait.updateHitbox();
+			if (side == 1) portrait.screenCenter(FlxAxes.X);
 
 			final animationData:Dynamic = Reflect.field(characterData, 'animations');
 			if (Std.isOfType(animationData, Array))
@@ -1362,11 +1369,8 @@ class PlayState extends MusicBeatState
 
 		// Insert the portrait immediately behind the dialogue box, matching the
 		// original V4 dialogue layering rather than drawing it over the text.
-		if (html5FallbackBox != null && members.indexOf(html5FallbackBox) >= 0)
-		{
-			insert(members.indexOf(html5FallbackBox), portrait);
-			html5FallbackDialogueObjects.push(portrait);
-		}
+		if (html5FallbackPortraitLayer != null)
+			html5FallbackPortraitLayer.add(portrait);
 		else
 			addHtml5FallbackDialogueObject(portrait);
 		html5FallbackPortraits.set(character, portrait);
@@ -1473,7 +1477,21 @@ class PlayState extends MusicBeatState
 	function advanceHtml5FallbackDialogue(skip:Bool = false):Void
 	{
 		if (!html5FallbackDialogueActive) return;
-		if (skip || html5FallbackDialogueIndex + 1 >= html5FallbackDialogueLines.length)
+		if (skip)
+		{
+			endHtml5FallbackDialogue();
+			return;
+		}
+
+		final current = html5FallbackDialogueLines[html5FallbackDialogueIndex];
+		if (html5FallbackTypedChars < current.text.length)
+		{
+			// First press completes the typewriter; the next press advances.
+			html5FallbackTypedChars = current.text.length;
+			if (html5FallbackDomLine != null) html5FallbackDomLine.textContent = current.text;
+			return;
+		}
+		if (html5FallbackDialogueIndex + 1 >= html5FallbackDialogueLines.length)
 		{
 			endHtml5FallbackDialogue();
 			return;
@@ -1482,11 +1500,39 @@ class PlayState extends MusicBeatState
 		updateHtml5FallbackDialogueLine();
 	}
 
+	function updateHtml5FallbackTypewriter(elapsed:Float):Void
+	{
+		if (!html5FallbackDialogueActive || html5FallbackDialogueLines.length == 0) return;
+		final entry = html5FallbackDialogueLines[html5FallbackDialogueIndex];
+		if (html5FallbackTypedChars >= entry.text.length) return;
+
+		html5FallbackTypingTimer += elapsed;
+		final characterDelay:Float = 0.035;
+		while (html5FallbackTypingTimer >= characterDelay && html5FallbackTypedChars < entry.text.length)
+		{
+			html5FallbackTypingTimer -= characterDelay;
+			html5FallbackTypedChars++;
+			if (html5FallbackDomLine != null)
+				html5FallbackDomLine.textContent = entry.text.substr(0, html5FallbackTypedChars);
+
+			final typed:String = entry.text.substr(html5FallbackTypedChars - 1, 1);
+			if (typed != ' ' && typed != '\\n' && typed != '\\t')
+			{
+				try FlxG.sound.play(Paths.sound('dialogue/' + html5FallbackVoice), 0.6) catch (voiceError:Dynamic) {
+					PlayState.recordHtml5Diagnostic('Dialogue voice sample failed for ' + html5FallbackVoice + ': ' + Std.string(voiceError));
+				}
+			}
+		}
+	}
+
 	function updateHtml5FallbackDomDialogue(entry:{speaker:String, character:String, emote:String, text:String}):Void
 	{
 		if (html5FallbackDomOverlay == null) createHtml5FallbackDomDialogue();
+		html5FallbackTypedChars = 0;
+		html5FallbackTypingTimer = 0;
+		html5FallbackVoice = entry.sound;
 		if (html5FallbackDomSpeaker != null) html5FallbackDomSpeaker.textContent = entry.speaker;
-		if (html5FallbackDomLine != null) html5FallbackDomLine.textContent = entry.text;
+		if (html5FallbackDomLine != null) html5FallbackDomLine.textContent = '';
 		if (html5FallbackDomHint != null)
 			html5FallbackDomHint.textContent = 'Press ENTER / SPACE to continue  ('
 				+ (html5FallbackDialogueIndex + 1) + '/' + html5FallbackDialogueLines.length + ')  |  ESC to skip';
@@ -1666,7 +1712,8 @@ class PlayState extends MusicBeatState
 				PlayState.recordHtml5Diagnostic('Native fallback localization failed for ' + key + ': ' + Std.string(e));
 			}
 
-			var speaker:String = rawSpeaker.toUpperCase();
+				var speaker:String = rawSpeaker.toUpperCase();
+			var voice:String = rawSpeaker;
 			try
 			{
 				final rawCharacterData:Null<String> = funkin.FunkinAssets.getHtml5DialogueCharacter(rawSpeaker);
@@ -1679,6 +1726,8 @@ class PlayState extends MusicBeatState
 						final nameText:Null<String> = funkin.data.Lang.str(Std.string(localizedName), Std.string(localizedName));
 						if (nameText != null) speaker = nameText;
 					}
+					final voiceValue:Dynamic = Reflect.field(characterData, 'sound');
+					if (voiceValue != null && Std.string(voiceValue).length > 0) voice = Std.string(voiceValue);
 				}
 			}
 			catch (e:Dynamic) {}
@@ -1686,13 +1735,14 @@ class PlayState extends MusicBeatState
 				speaker: speaker,
 				character: rawSpeaker,
 				emote: emote,
+				sound: voice,
 				text: displayText
 			});
 		}
 
 		if (html5FallbackDialogueLines.length == 0)
 		{
-			html5FallbackDialogueLines.push({speaker: 'RED', character: 'red', emote: 'sad', text: 'Sussus Moogus'});
+			html5FallbackDialogueLines.push({speaker: 'RED', character: 'red', emote: 'sad', sound: 'red', text: 'Sussus Moogus'});
 			PlayState.recordHtml5Diagnostic('Native fallback had no parseable dialogue lines; displaying emergency text.');
 		}
 
@@ -1705,6 +1755,13 @@ class PlayState extends MusicBeatState
 		html5DialogueUiReady = true;
 		html5DialoguePhase = 'Native fallback dialogue initializing';
 		stopHtml5DomWatchdog();
+
+		// Keep the animated portraits in the same camera-backed sprite group
+		// used by the original dialogue script, behind the dialogue box.
+		html5FallbackPortraitLayer = new FlxSpriteGroup();
+		html5FallbackPortraitLayer.camera = camHUD;
+		add(html5FallbackPortraitLayer);
+		html5FallbackDialogueObjects.push(html5FallbackPortraitLayer);
 
 		// Put text in a browser-level overlay before loading optional Flixel
 		// artwork. This remains visible even if the renderer mishandles the
@@ -3110,9 +3167,9 @@ class PlayState extends MusicBeatState
 		}
 		if (html5FallbackDialogueActive)
 		{
-			// Input is handled by the document keydown listener and panel click
-			// handler. Continue updating the state so animated character atlases
-			// remain alive while dialogue is on screen.
+			updateHtml5FallbackTypewriter(elapsed);
+			// Continue the state's update so the portrait sprite group keeps
+			// advancing animation frames while the browser text types.
 			super.update(elapsed);
 			return;
 		}
