@@ -1135,15 +1135,24 @@ class PlayState extends MusicBeatState
 							PlayState.recordHtml5Diagnostic('Direct readDialogue returned; hasDialogue=' + hasDialogueAfterFinish + ', uiReady=' + uiReadyAfterFinish);
 						}
 
-						// The HScript currently can acknowledge "ready" without drawing a
-						// visible dialogue overlay on HTML5. For this intro, always hand
-						// presentation over to the native Flixel fallback after the script
-						// has loaded its real dialogue data. This prevents a false-positive
-						// ready flag from silently skipping the whole conversation.
-						try dialogueScript?.call('abandonHtml5SussusMoogusIntro', []) catch (cleanupError:Dynamic) {
-							PlayState.recordHtml5Diagnostic('Partial dialogue UI cleanup failed: ' + Std.string(cleanupError));
+						if (hasDialogueAfterFinish && uiReadyAfterFinish)
+						{
+							// The original dialogue script has initialized successfully.
+							// Keep its real Flixel dialogue box, portraits, character animation
+							// callbacks, FlxTypeText typewriter, and per-speaker voice samples.
+							html5DialogueUiReady = true;
+							html5DialoguePhase = 'Original HScript dialogue UI ready; keeping native dialogue lifecycle';
+							PlayState.recordHtml5Diagnostic('Original HScript dialogue UI is ready; native fallback not used.');
 						}
-						startHtml5SussusMoogusFallbackDialogue(dialogueScript);
+						else
+						{
+							// Only tear down the original script UI and use the fallback when
+							// its dialogue flag or ready acknowledgement is genuinely missing.
+							try dialogueScript?.call('abandonHtml5SussusMoogusIntro', []) catch (cleanupError:Dynamic) {
+								PlayState.recordHtml5Diagnostic('Partial dialogue UI cleanup failed: ' + Std.string(cleanupError));
+							}
+							startHtml5SussusMoogusFallbackDialogue(dialogueScript);
+						}
 
 						// Check the actual UI after its 0.5-second construction delay.
 						// If it never becomes ready, clean partial visuals and force the
@@ -1321,9 +1330,10 @@ class PlayState extends MusicBeatState
 		portrait.alpha = 1;
 		try
 		{
-			// Use the same Sparrow atlas loader as the original GF portrait.
-			// These files are PNG/XML atlases, not Animate/Animation.json atlases.
-			portrait.frames = Paths.getSparrowAtlas('ui/dialogue/characters/' + asset);
+			// Use the exact loader used by the original dialogue script. FunkinSprite
+			// wraps Sparrow atlases in its animation library so prefixed dialogue
+			// animations (RI sad, BF neutral, GF suspect, etc.) are registered.
+			portrait.loadAtlas('ui/dialogue/characters/' + asset);
 			portrait.updateHitbox();
 			if (side == 1) portrait.screenCenter(FlxAxes.X);
 
