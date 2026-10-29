@@ -1140,10 +1140,13 @@ class PlayState extends MusicBeatState
 						// or fail to play the voice samples on the web build. Tear down its
 						// partial visuals and always hand the loaded dialogue to the fallback.
 						PlayState.recordHtml5Diagnostic('Handoff flags before fallback: hasDialogue=' + hasDialogueAfterFinish + ', uiReady=' + uiReadyAfterFinish);
-						try dialogueScript?.call('abandonHtml5SussusMoogusIntro', []) catch (cleanupError:Dynamic) {
-							PlayState.recordHtml5Diagnostic('Partial dialogue UI cleanup failed: ' + Std.string(cleanupError));
+						if (!html5FallbackDialogueActive)
+						{
+							try dialogueScript?.call('abandonHtml5SussusMoogusIntro', []) catch (cleanupError:Dynamic) {
+								PlayState.recordHtml5Diagnostic('Partial dialogue UI cleanup failed: ' + Std.string(cleanupError));
+							}
+							startHtml5DialogueFallback(dialogueScript, PlayState.SONG?.song);
 						}
-						startHtml5SussusMoogusFallbackDialogue(dialogueScript);
 
 						// Check the actual UI after its 0.5-second construction delay.
 						// If it never becomes ready, clean partial visuals and force the
@@ -1721,27 +1724,27 @@ class PlayState extends MusicBeatState
 		startCountdown();
 	}
 
-	function startHtml5SussusMoogusFallbackDialogue(dialogueScript:Null<FunkinScript>):Void
+	public function startHtml5DialogueFallback(dialogueScript:Null<FunkinScript>, ?songName:String):Bool
 	{
-		if (html5FallbackDialogueActive) return;
-		// Do not suppress the dialogue just because another startup path set
-		// startedCountdown early. The first-song intro must finish its dialogue
-		// handoff before the player sees a silent gameplay scene.
+		if (html5FallbackDialogueActive) return true;
 
-		// The HScript UI can fail during HTML5 reflection even after the dialogue
-		// data has loaded. Keep its real 15-line data and show it with native
-		// Flixel objects instead of clearing it and silently starting gameplay.
+		final requestedSong:String = songName ?? PlayState.SONG?.song ?? 'sussus-moogus';
+		final safeDialogueSong:String = Paths.sanitize(requestedSong);
+		final normalizedDialogueSong:String = StringTools.replace(
+			StringTools.replace(requestedSong.toLowerCase().trim(), ' ', '-'), '_', '-');
+
+		// This is the shared HTML5 dialogue presenter for the Impostor mod.
+		// Prefer the full source text for the active song so the fallback never
+		// starts halfway through a script-consumed dialogueList.
 		var sourceLines:Array<Dynamic> = [];
-		// Always prefer the complete cached source so the fallback begins at
-		// line 1 even if the script UI already consumed its first entry.
 		try
 		{
-			final cached:Null<String> = FunkinAssets.getHtml5SongDialogue('sussus-moogus');
+			final cached:Null<String> = FunkinAssets.getHtml5SongDialogue(safeDialogueSong);
 			if (cached != null && cached.trim().length > 0) sourceLines = cast cached.split("\n");
 		}
 		catch (e:Dynamic)
 		{
-			PlayState.recordHtml5Diagnostic('Could not load cached Sussus Moogus text for native fallback: ' + Std.string(e));
+			PlayState.recordHtml5Diagnostic('Could not load cached dialogue for ' + safeDialogueSong + ': ' + Std.string(e));
 		}
 
 		if (sourceLines.length == 0)
@@ -1757,8 +1760,10 @@ class PlayState extends MusicBeatState
 			}
 		}
 
-		if (sourceLines.length == 0)
+		if (sourceLines.length == 0 && normalizedDialogueSong == 'sussus-moogus')
 		{
+			// Last-resort source for the first song only. Other songs must use
+			// their own dialogue.txt rather than accidentally displaying Moogus.
 			sourceLines = cast [
 				':red:sad:dialogue_moogus0', ':bf:neutral:dialogue_moogus1',
 				':gf:suspect:dialogue_moogus2', ':gf:suspect:dialogue_moogus3',
@@ -1769,6 +1774,11 @@ class PlayState extends MusicBeatState
 				':red:happy:dialogue_moogus12', ':red:happy:dialogue_moogus13',
 				':bf:neutral:dialogue_moogus14'
 			];
+		}
+		if (sourceLines.length == 0)
+		{
+			PlayState.recordHtml5Diagnostic('No cached or script dialogue lines found for ' + safeDialogueSong + '; leaving the original UI path available.');
+			return false;
 		}
 
 		html5FallbackDialogueLines.resize(0);
@@ -1823,8 +1833,8 @@ class PlayState extends MusicBeatState
 
 		if (html5FallbackDialogueLines.length == 0)
 		{
-			html5FallbackDialogueLines.push({speaker: 'RED', character: 'red', emote: 'sad', sound: 'red', text: 'Sussus Moogus'});
-			PlayState.recordHtml5Diagnostic('Native fallback had no parseable dialogue lines; displaying emergency text.');
+			PlayState.recordHtml5Diagnostic('Native fallback could not parse dialogue lines for ' + safeDialogueSong + '.');
+			return false;
 		}
 
 		html5FallbackDialogueIndex = 0;
@@ -1909,7 +1919,16 @@ class PlayState extends MusicBeatState
 			// abort it or turn a dialogue problem into a silent gameplay skip.
 			PlayState.recordHtml5Diagnostic('Native dialogue art setup failed; keeping browser text panel and animation where available: ' + Std.string(artError));
 		}
-		PlayState.recordHtml5Diagnostic('Native HTML5 dialogue fallback displayed because the HScript dialogue UI did not become ready.');
+		PlayState.recordHtml5Diagnostic('Native HTML5 dialogue fallback displayed for ' + safeDialogueSong + '.');
+		return true;
+	}
+
+	public function startHtml5DialogueFallbackForActiveScript(?songName:String):Bool
+	{
+		final dialogueScript:Null<FunkinScript> = scripts == null
+			? null
+			: scripts.getScript('gameplay:assets/scripts/dialogue.hx');
+		return startHtml5DialogueFallback(dialogueScript, songName);
 	}
 
 	function showHtml5DomFreezeDiagnostics(reason:String):Void
