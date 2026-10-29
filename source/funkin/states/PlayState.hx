@@ -1573,6 +1573,15 @@ class PlayState extends MusicBeatState
 		try if (html5FallbackVoiceSound != null) html5FallbackVoiceSound.stop() catch (stopError:Dynamic) {}
 		try
 		{
+			if (html5FallbackDomVoiceAudio != null)
+			{
+				html5FallbackDomVoiceAudio.pause();
+				html5FallbackDomVoiceAudio.currentTime = 0;
+			}
+		}
+		catch (stopBrowserVoiceError:Dynamic) {}
+		try
+		{
 			// Set up both browser audio and Flixel audio: browser playback handles
 			// the original OGG files directly, and FlxSound is the rejection fallback.
 			if (html5FallbackDomVoiceAudio == null)
@@ -1716,6 +1725,9 @@ class PlayState extends MusicBeatState
 		}
 		catch (audioCleanupError:Dynamic) {}
 		html5FallbackDomVoiceAudio = null;
+		// readDialogue() normally stops the temporary dialogue music before
+		// countdown; mirror that behavior for the native presenter.
+		try FlxG.sound.music.stop() catch (musicStopError:Dynamic) {}
 		inCutscene = false;
 		seenCutscene = true;
 		// Leave html5DialogueUiReady set so the video watchdog cannot mistake
