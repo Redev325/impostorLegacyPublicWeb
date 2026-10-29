@@ -1731,7 +1731,7 @@ class PlayState extends MusicBeatState
 		final requestedSong:String = songName ?? PlayState.SONG?.song ?? 'sussus-moogus';
 		final safeDialogueSong:String = Paths.sanitize(requestedSong);
 		final normalizedDialogueSong:String = StringTools.replace(
-			StringTools.replace(requestedSong.toLowerCase().trim(), ' ', '-'), '_', '-');
+			StringTools.replace(StringTools.trim(requestedSong.toLowerCase()), ' ', '-'), '_', '-');
 
 		// This is the shared HTML5 dialogue presenter for the Impostor mod.
 		// Prefer the full source text for the active song so the fallback never
