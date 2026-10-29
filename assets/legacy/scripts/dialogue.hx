@@ -931,6 +931,33 @@ public function readDialogue()
 		#end
 	}
 	try PlayState.instance?.reportHtml5DialoguePhase('UI checkpoint 2: dialogue audio setup passed') catch (phaseError:Dynamic) {}
+
+	#if html5
+	// On HTML5, use the shared native presenter for regular Impostor dialogue
+	// too. It consumes the same dialogue.txt + character JSON + language keys,
+	// but avoids HScript UI/input/audio reflection failures. Sussus Moogus keeps
+	// its video-specific handoff in PlayState, which starts the same presenter.
+	if (!isSussusMoogus)
+	{
+		var fallbackStarted:Bool = false;
+		try
+		{
+			fallbackStarted = PlayState.instance?.startHtml5DialogueFallbackForActiveScript(safeSong) ?? false;
+		}
+		catch (fallbackError:Dynamic)
+		{
+			try PlayState.instance?.reportHtml5Diagnostic('Shared HTML5 dialogue presenter failed for ' + safeSong + ': ' + Std.string(fallbackError)) catch (diagnosticError:Dynamic) {}
+		}
+		if (fallbackStarted)
+		{
+			hasDialogue = false;
+			dialogueUiReady = true;
+			try PlayState.instance?.markHtml5DialogueUiReady('Shared native HTML5 dialogue presenter active for ' + safeSong) catch (readyError:Dynamic) {}
+			try PlayState.instance?.reportHtml5DialoguePhase('Shared native HTML5 dialogue presenter accepted all lines for ' + safeSong) catch (phaseError:Dynamic) {}
+			return;
+		}
+	}
+	#end
 	
 	bgFade = new FlxSprite(-200, -200).makeScaledGraphic(Std.int(FlxG.width * 1.3), Std.int(FlxG.height * 1.3), 0xFFFFFFFF);
 	bgFade.camera = camHUD;
