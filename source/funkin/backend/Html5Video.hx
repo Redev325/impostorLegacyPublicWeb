@@ -16,6 +16,8 @@ class Html5Video
 	static var finished:Bool = false;
 	static var started:Bool = false;
 	static var pauseRequested:Bool = false;
+	static var skipPrompt:Null<js.html.DivElement> = null;
+	static var skipKeyHandler:Dynamic = null;
 	static var loadTimeout:Null<Timer> = null;
 	static var endWatchdog:Null<Timer> = null;
 	#end
@@ -203,6 +205,33 @@ class Html5Video
 			};
 
 			Browser.document.body.appendChild(video);
+
+			// Display a crisp bottom-left skip hint for every HTML5 video cutscene.
+			final prompt:js.html.DivElement = cast Browser.document.createElement('div');
+			prompt.style.cssText = 'position:fixed;left:10px;bottom:10px;z-index:100001;display:flex;align-items:center;gap:14px;'
+				+ 'pointer-events:none;color:#ff1010;font-family:monospace;font-size:clamp(18px,3vw,30px);'
+				+ 'font-weight:900;line-height:1;text-shadow:2px 2px 0 #000,-1px -1px 0 #000;';
+			final keycap:js.html.DivElement = cast Browser.document.createElement('div');
+			keycap.textContent = 'Space';
+			keycap.style.cssText = 'display:inline-block;border:3px solid #ff1010;padding:3px 10px 5px;background:rgba(0,0,0,0.35);box-shadow:2px 2px 0 #000;';
+			final promptText:js.html.SpanElement = cast Browser.document.createElement('span');
+			promptText.textContent = 'To Skip Cutscene';
+			prompt.appendChild(keycap);
+			prompt.appendChild(promptText);
+			Browser.document.body.appendChild(prompt);
+			skipPrompt = prompt;
+			skipKeyHandler = function(event:Dynamic) {
+				if (currentVideo != video || finished || event == null) return;
+				final key:String = Std.string(Reflect.field(event, 'key') ?? '');
+				final code:String = Std.string(Reflect.field(event, 'code') ?? '');
+				if (key == ' ' || code == 'Space')
+				{
+					if (Reflect.isFunction(Reflect.field(event, 'preventDefault'))) event.preventDefault();
+					skip();
+				}
+			};
+			Browser.document.addEventListener('keydown', skipKeyHandler);
+
 			// Explicitly start loading after insertion so browsers initialize the
 			// media element consistently when the URL is served from GitHub Pages.
 			try video.load() catch (e:Dynamic) {}
@@ -293,6 +322,7 @@ class Html5Video
 
 			cleanupVideo(video);
 			cleanupBackdrop();
+			cleanupSkipPrompt();
 		#end
 	}
 
@@ -359,6 +389,7 @@ class Html5Video
 		// must never leave the full-screen black DOM backdrop stuck over the game.
 		cleanupVideo(video);
 		cleanupBackdrop();
+		cleanupSkipPrompt();
 
 		if (cb != null)
 		{
@@ -372,6 +403,21 @@ class Html5Video
 		{
 			endWatchdog.stop();
 			endWatchdog = null;
+		}
+	}
+
+	static function cleanupSkipPrompt():Void
+	{
+		if (skipKeyHandler != null)
+		{
+			try Browser.document.removeEventListener('keydown', skipKeyHandler) catch (e:Dynamic) {}
+			skipKeyHandler = null;
+		}
+		final prompt = skipPrompt;
+		skipPrompt = null;
+		if (prompt != null)
+		{
+			try if (prompt.parentNode != null) prompt.parentNode.removeChild(prompt) catch (e:Dynamic) {}
 		}
 	}
 
