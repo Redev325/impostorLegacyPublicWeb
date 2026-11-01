@@ -1135,13 +1135,16 @@ class PlayState extends MusicBeatState
 							PlayState.recordHtml5Diagnostic('Direct readDialogue returned; hasDialogue=' + hasDialogueAfterFinish + ', uiReady=' + uiReadyAfterFinish);
 						}
 
-						// Keep the original dialogue.hx presenter alive. A successful
-						// HScript handoff owns the actual Impostor dialogue UI, portraits,
-						// typewriter and voice samples; never replace it with the fallback.
-						if (!hasDialogueAfterFinish || !uiReadyAfterFinish)
+						// The browser HScript dialogue path can return without a usable UI.
+						// Hand the full source dialogue to the native presenter so the
+						// intro never ends on an empty gameplay screen.
+						PlayState.recordHtml5Diagnostic('Handoff flags before fallback: hasDialogue=' + hasDialogueAfterFinish + ', uiReady=' + uiReadyAfterFinish);
+						if (!html5FallbackDialogueActive)
 						{
-							PlayState.recordHtml5Diagnostic('Original dialogue UI did not report ready; preserving its state for diagnostics. hasDialogue='
-								+ hasDialogueAfterFinish + ', uiReady=' + uiReadyAfterFinish);
+							try dialogueScript?.call('abandonHtml5SussusMoogusIntro', []) catch (cleanupError:Dynamic) {
+								PlayState.recordHtml5Diagnostic('Partial dialogue UI cleanup failed: ' + Std.string(cleanupError));
+							}
+							startHtml5DialogueFallback(dialogueScript, PlayState.SONG?.song);
 						}
 
 						// Check the actual UI after its 0.5-second construction delay.
