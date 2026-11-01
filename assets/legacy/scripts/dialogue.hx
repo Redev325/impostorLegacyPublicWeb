@@ -1070,9 +1070,18 @@ public function readDialogue()
 	catch (e:Dynamic)
 	{
 		dialogueUiReady = false;
-		final message:String = 'Dialogue UI initialization exception for ' + (PlayState.SONG?.song ?? 'unknown song') + ': ' + Std.string(e);
-		trace('HTML5 dialogue UI initialization failed: ' + e);
-		try PlayState.instance?.reportHtml5Diagnostic(message) catch (diagnosticError:Dynamic) {}
+		final message:String = 'ORIGINAL DIALOGUE UI INITIALIZATION FAILED for ' + (PlayState.SONG?.song ?? 'unknown song') + ': ' + Std.string(e);
+		trace(message);
+		try
+		{
+			PlayState.instance?.reportHtml5Diagnostic(message);
+			PlayState.instance?.reportHtml5DialoguePhase('Original dialogue UI exception: ' + Std.string(e));
+			PlayState.instance?.showHtml5FreezeDiagnostics(message);
+		}
+		catch (diagnosticError:Dynamic)
+		{
+			trace('Could not display original dialogue error overlay: ' + Std.string(diagnosticError));
+		}
 	}
 #else
 	FlxTimer.wait(0.5, function() {
