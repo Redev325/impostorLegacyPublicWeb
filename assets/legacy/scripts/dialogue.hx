@@ -933,29 +933,8 @@ public function readDialogue()
 	try PlayState.instance?.reportHtml5DialoguePhase('UI checkpoint 2: dialogue audio setup passed') catch (phaseError:Dynamic) {}
 
 	#if html5
-	// Use the shared native presenter for regular songs on HTML5. The legacy
-	// HScript UI can fail to attach to the browser canvas; keep the game dialogue
-	// visible and advanceable rather than silently dropping it.
-	if (!isSussusMoogus)
-	{
-		var fallbackStarted:Bool = false;
-		try
-		{
-			fallbackStarted = PlayState.instance?.startHtml5DialogueFallbackForActiveScript(safeSong) ?? false;
-		}
-		catch (fallbackError:Dynamic)
-		{
-			try PlayState.instance?.reportHtml5Diagnostic('Shared HTML5 dialogue presenter failed for ' + safeSong + ': ' + Std.string(fallbackError)) catch (diagnosticError:Dynamic) {}
-		}
-		if (fallbackStarted)
-		{
-			hasDialogue = false;
-			dialogueUiReady = true;
-			try PlayState.instance?.markHtml5DialogueUiReady('Shared native HTML5 dialogue presenter active for ' + safeSong) catch (readyError:Dynamic) {}
-			try PlayState.instance?.reportHtml5DialoguePhase('Shared native HTML5 dialogue presenter accepted all lines for ' + safeSong) catch (phaseError:Dynamic) {}
-			return;
-		}
-	}
+	// Original Impostor HScript dialogue is the only dialogue presenter.
+	try PlayState.instance?.reportHtml5DialoguePhase('Original HScript dialogue UI selected; temporary presenter disabled') catch (phaseError:Dynamic) {}
 	#end
 
 	bgFade = new FlxSprite(-200, -200).makeScaledGraphic(Std.int(FlxG.width * 1.3), Std.int(FlxG.height * 1.3), 0xFFFFFFFF);
