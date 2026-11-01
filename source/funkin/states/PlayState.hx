@@ -1135,17 +1135,8 @@ class PlayState extends MusicBeatState
 							PlayState.recordHtml5Diagnostic('Direct readDialogue returned; hasDialogue=' + hasDialogueAfterFinish + ', uiReady=' + uiReadyAfterFinish);
 						}
 
-						// The browser HScript dialogue path can return without a usable UI.
-						// Hand the full source dialogue to the native presenter so the
-						// intro never ends on an empty gameplay screen.
-						PlayState.recordHtml5Diagnostic('Handoff flags before fallback: hasDialogue=' + hasDialogueAfterFinish + ', uiReady=' + uiReadyAfterFinish);
-						if (!html5FallbackDialogueActive)
-						{
-							try dialogueScript?.call('abandonHtml5SussusMoogusIntro', []) catch (cleanupError:Dynamic) {
-								PlayState.recordHtml5Diagnostic('Partial dialogue UI cleanup failed: ' + Std.string(cleanupError));
-							}
-							startHtml5DialogueFallback(dialogueScript, PlayState.SONG?.song);
-						}
+						// Keep the original HScript dialogue. Do not switch to the native presenter.
+						PlayState.recordHtml5Diagnostic('Original HScript dialogue flags: hasDialogue=' + hasDialogueAfterFinish + ', uiReady=' + uiReadyAfterFinish);
 
 						// Check the actual UI after its 0.5-second construction delay.
 						// If it never becomes ready, clean partial visuals and force the
@@ -1169,13 +1160,7 @@ class PlayState extends MusicBeatState
 									PlayState.recordHtml5Diagnostic('Dialogue list lines at timeout: ' + (cast lineData:Array<Dynamic>).length);
 							}
 							showHtml5FreezeDiagnostics(reason);
-							try currentDialogue?.call('abandonHtml5SussusMoogusIntro', []) catch (e:Dynamic) {
-								PlayState.recordHtml5Diagnostic('Dialogue cleanup failed: ' + Std.string(e));
-							}
-							inCutscene = false;
-							seenCutscene = true;
-							songStartCallback = startCountdown;
-							startCountdown();
+							// Keep the original HScript state visible for diagnosis; do not replace or reset it.
 						});
 						return;
 					}
